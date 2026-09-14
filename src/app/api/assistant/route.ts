@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
       { documentId: '', docNumber: '', title: `فایل بارگذاری‌شده: ${af.originalName}`, project: '', revision: null, revStatus: null, source: 'internal' },
       af.pageCount || null,
       `فایل بارگذاری‌شدهٔ کاربر «${af.originalName}» (${srcLabel}${af.pageCount ? `، ${af.pageCount} صفحه` : ''}):
-${(af.textContent || '').slice(0, 60000)}`,
+${(af.textContent || '').slice(0, 120000)}`,
     );
   }
 
@@ -310,12 +310,21 @@ ${(af.textContent || '').slice(0, 60000)}`,
   const aggregateIntent = /(چند|تعداد|جمع|مجموع|میانگین|سهم|چقدر|در کل|مجموعا|chand|count|total|sum|chandta)/i.test(faQ) || flTokens.some((t) => ['چند', 'تعداد', 'جمع', 'مجموع'].includes(t));
 
   if (!docId) {
+    // گسترش بازیابی عنوان: توکن‌های پرسش (با گونه‌های ارقام) + کدها و هستهٔ عددی آن‌ها
+    // مثال: «ایزومتریک خط 8-C-2101-A1A» → هستهٔ «2101» در عنوان سند 210-ISO-0007 می‌خورد
+    const codeNumCores = codes.flatMap((c) => c.match(/\d{3,}/g) || []);
+    const titleVars = Array.from(new Set([
+      ...questionTokens(faQ).flatMap((t) => digitVariants(t).flatMap((v) => [v, v.toLowerCase()])),
+      ...flTokens,
+      ...codes,
+      ...codeNumCores,
+    ])).slice(0, 10);
     const [byNumber, byTitle, byLink, pageHits, extractionHits, mtoHits] = await Promise.all([
       codes.length
         ? db.document.findMany({ where: { ...baseDocWhere, OR: codes.map((c) => ({ docNumber: { contains: c } })) }, include: { project: { select: { code: true } }, revisions: { orderBy: { createdAt: 'desc' }, take: 1, select: { revisionCode: true, status: true } } }, take: 6 })
         : Promise.resolve([]),
-      faQ.length >= 2
-        ? db.document.findMany({ where: { ...baseDocWhere, OR: Array.from(new Set([...digitVariants(faQ).flatMap((v) => [v, v.toLowerCase()]), ...flTokens])).slice(0, 6).map((v) => ({ title: { contains: v } })) }, include: { project: { select: { code: true } }, revisions: { orderBy: { createdAt: 'desc' }, take: 1, select: { revisionCode: true, status: true } } }, take: 6 })
+      titleVars.length
+        ? db.document.findMany({ where: { ...baseDocWhere, OR: titleVars.map((v) => ({ title: { contains: v } })) }, include: { project: { select: { code: true } }, revisions: { orderBy: { createdAt: 'desc' }, take: 1, select: { revisionCode: true, status: true } } }, take: 6 })
         : Promise.resolve([]),
       codes.length
         ? db.docLink.findMany({

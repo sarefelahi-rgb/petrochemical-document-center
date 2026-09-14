@@ -9,6 +9,7 @@ import { checkFile, MAX_UPLOAD_MB } from '@/lib/filesec';
 import { storeOriginal, ensureDirs, TMP_ROOT } from '@/lib/storage';
 import { extractFromFile } from '@/lib/extract';
 import { chatComplete } from '@/lib/modelGateway';
+import { dominantLanguage } from '@/lib/finglish';
 import { audit } from '@/lib/audit';
 import fs from 'fs';
 import path from 'path';
@@ -94,13 +95,18 @@ export async function POST(req: NextRequest) {
   const srcLabel = extraction.source === 'OCR' ? 'OCR (فارسی/انگلیسی)' : extraction.source === 'TEXT_LAYER' ? 'لایهٔ متنی PDF' : extraction.source === 'OFFICE' ? 'سند آفیس' : 'متن فایل';
   const extractionNote = extraction.note || extraction.error || '';
 
-  // خلاصه‌سازی مدل — فقط بر متن استخراج‌شده
+  // خلاصه‌سازی مدل — فقط بر متن استخراج‌شده (سقف بالاتر برای پوشش «تمام محتوا»)
   let answer: string;
-  const textForModel = (extraction.text || '').slice(0, 12000);
+  const textForModel = (extraction.text || '').slice(0, 28000);
   if (extraction.ok && textForModel.length > 0) {
+    // پاسخ هم‌زبان محتوای فایل — بدون محدودیت زبانی
+    const fileLang = dominantLanguage(textForModel.slice(0, 4000));
+    const langRule = fileLang === 'en'
+      ? 'محتوای فایل عمدتاً انگلیسی است؛ خلاصه را انگلیسیِ روان بده و اصطلاحات فنی را عیناً حفظ کن.'
+      : 'پاسخ را فارسیِ روان با رسم‌الخط درست بده و اصطلاحات فنی انگلیسی را عیناً حفظ کن.';
     const res = await chatComplete(
       [
-        { role: 'system', content: 'تو «دستیار هوشمند اسناد پتروشیمی» هستی و تازه یک فایل از کاربر دریافت کرده‌ای. فقط فارسی پاسخ بده. فقط بر متن استخراج‌شدهٔ فایل تکیه کن؛ هیچ چیزی از خودت نساز. ساختار پاسخ: (۱) این فایل چیست، (۲) خلاصهٔ اطلاعات کلیدی در جدول یا فهرست، (۳) شماره‌ها/کدها/تاریخ‌های مهم، (۴) نکات ناخوانا یا ناقص. اگر متن ناقص است صریح بگو.' },
+        { role: 'system', content: `تو «دستیار هوشمند اسناد پتروشیمی» هستی و تازه یک فایل از کاربر دریافت کرده‌ای. بدون هیچ محدودیت زبانی/کاراکتری می‌فهمی. ${langRule} فقط بر متن استخراج‌شدهٔ فایل تکیه کن؛ هیچ چیزی از خودت نساز. ساختار پاسخ: (۱) این فایل چیست، (۲) خلاصهٔ اطلاعات کلیدی در جدول یا فهرست، (۳) شماره‌ها/کدها/تاریخ‌های مهم، (۴) نکات ناخوانا یا ناقص. اگر متن ناقص است صریح بگو.` },
         { role: 'user', content: `نام فایل: ${originalName}\nنوع: ${check.label}\nروش استخراج: ${srcLabel}${extraction.pageCount ? ` — ${extraction.pageCount} صفحه` : ''}\n${extractionNote ? `یادداشت: ${extractionNote}\n` : ''}\nمتن استخراج‌شده:\n${textForModel}\n\nاطلاعات این فایل را کامل معرفی و خلاصه کن.` },
       ],
       { timeoutMs: 120_000, maxAttempts: 2 },

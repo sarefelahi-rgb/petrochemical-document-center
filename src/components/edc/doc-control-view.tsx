@@ -290,7 +290,10 @@ function MdrTab() {
       .catch((e) => toast({ title: 'خطا', description: e.message, variant: 'destructive' }))
       .finally(() => setBusy(false));
   }, []);
-  useEffect(() => { load(projectId); }, [projectId, load]);
+  useEffect(() => {
+    const t = setTimeout(() => load(projectId), 0);
+    return () => clearTimeout(t);
+  }, [projectId, load]);
 
   return (
     <Card>

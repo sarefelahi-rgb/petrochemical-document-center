@@ -132,7 +132,7 @@ export async function visionRead(
       zai.chat.completions.createVision({
         model: 'glm-4.5v',
         messages: [
-          { role: 'system', content: 'تو کارشناس خواندن مدارک مهندسی (P&ID، ایزومتریک، دیتاشیت) هستی. فقط فارسی پاسخ بده. هر چیزی که ناخواناست دقیقاً «ناخوانا» بنویس — هیچ عدد یا کدی را حدس نزن.' },
+          { role: 'system', content: 'تو کارشناس خواندن مدارک مهندسی (P&ID، ایزومتریک، دیتاشیت) هستی — بدون هیچ محدودیت زبانی: فارسی، انگلیسی، دوزبانه و فینگلیش را می‌فهمی. به همان زبانِ پرسش کاربر پاسخ بده (فینگلیش → فارسیِ روان). هر چیزی که ناخواناست دقیقاً «ناخوانا» بنویس — هیچ عدد یا کدی را حدس نزن.' },
           { role: 'user', content: [
             { type: 'text', text: prompt.slice(0, 2000) },
             { type: 'image_url', image_url: { url: imageDataUrl } },

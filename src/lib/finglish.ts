@@ -16,7 +16,7 @@ export const FINGLISH_WORDS: Record<string, string[]> = {
   madrak: ['مدرک'], madarek: ['مدارک'], sanad: ['سند'], asnad: ['اسناد'], naghshe: ['نقشه'],
   naghashi: ['نقشه'], map: ['نقشه'], document: ['سند'], file: ['فایل'], fail: ['فایل'],
   esnad: ['اسناد'], report: ['گزارش'], gozaresh: ['گزارش'], list: ['لیست'], fehrest: ['فهرست'],
-  jadval: ['جدول'], copy: ['کپی'], phot copy: ['فتوکپی'], baznashri: ['بازنشری'],
+  jadval: ['جدول'], copy: ['کپی'], 'photocopy': ['فتوکپی'], fotocopy: ['فتوکپی'], baznashri: ['بازنشری'],
   // مهندسی
   khat: ['خط'], khath: ['خط'], line: ['خط'], tag: ['برچسب'], borut: ['بروت'],
   material: ['متریال'], mavad: ['مواد'], lule: ['لوله'], luleh: ['لوله'], pipe: ['لوله'],
@@ -28,11 +28,19 @@ export const FINGLISH_WORDS: Record<string, string[]> = {
   vahed: ['واحد'], unit: ['واحد'], bakhsh: ['بخش'], separd: ['سپرد'],
   tahkim: ['تحکیم'], naghsheh: ['نقشه'], pandid: ['پی‌اند‌آی'], pid: ['پی‌اند‌آی'],
   isometric: ['ایزومتریک'], izometric: ['ایزومتریک'], datasheet: ['دیتاشیت'],
+  flange: ['فلنج'], flanch: ['فلنج'], gasket: ['گسکت'], elbow: ['آب‌بند زانویی'],
+  bolt: ['پیچ'], nut: ['مهره'], weldolet: ['ولدولت'], olet: ['اولت'],
+  // پالایشگاهی
+  reformer: ['رفورمر'], reactor: ['راکتور'], tower: ['برج'], borj: ['برج'],
+  heatexchanger: ['مبدل حرارتی'], exchanger: ['مبدل'], mobadel: ['مبدل'],
+  // اسناد مهندسی
+  mto: ['ام‌تی‌او'], plotplan: ['پلان'], layout: ['چیدمان'], pfd: ['پی‌اف‌دی'],
   spes: ['اسپک'], spec: ['اسپک'], class: ['کلاس'], kelass: ['کلاس'], size: ['سایز'],
   ghatar: ['قطر'], diameter: ['قطر'], feshar: ['فشار'], pressure: ['فشار'],
   dama: ['دما'], hararat: ['حرارت'], temperature: ['دما'],
   // وضعیت و گردش
   tasvib: ['تأیید'], taied: ['تأیید'], tayid: ['تأیید'], approve: ['تأیید'],
+  dastur: ['دستور'], tabe: ['تابع'], tasvir: ['تصویر'], aks: ['عکس'],
   rad: ['رد'], reject: ['رد'], void: ['ابطال'], batel: ['باطل'],
   nosxe: ['نسخه'], noskhe: ['نسخه'], revision: ['نسخه'], rev: ['نسخه'],
   tavabol: ['طغفول'], taghir: ['تغییر'], change: ['تغییر'], etelat: ['اطلاعات'],
@@ -40,13 +48,26 @@ export const FINGLISH_WORDS: Record<string, string[]> = {
   jari: ['جاری'], ghabli: ['قبلی'], badi: ['بعدی'], jadid: ['جدید'], kohne: ['کهنه'],
   // فعل‌ها و پرسش‌ها
   hast: ['هست'], nist: ['نیست'], bod: ['بود'], mishe: ['می‌شود'], mikham: ['می‌خواهم'],
-  begoo: ['بگو'], begu: ['بگو'], bedeh: ['بده'], peyda: ['پیدا'], kon: ['کن'], konid: ['کنید'],
-  bashad: ['باشد'], chand: ['چند'], cheghadr: ['چقدر'], chist: ['چیست'], chiye: ['چیه'],
+  mikhastam: ['می‌خواستم'], mikhaym: ['می‌خواهیم'], bebinam: ['ببینم'], bebin: ['ببین'],
+  mikhham: ['می‌خواهم'], shode: ['شده'], shodeh: ['شده'], shodeha: ['شده‌ها'],
+  begoo: ['بگو'], begu: ['بگو'], bedeh: ['بده'], bede: ['بده'], peyda: ['پیدا'], kon: ['کن'], konid: ['کنید'],
+  bezar: ['بگذار'], begir: ['بگیر'], daryaft: ['دریافت'], ersal: ['ارسال'], ferestad: ['فرستاد'],
+  bashad: ['باشد'], bashe: ['باشه'], chand: ['چند'], cheghadr: ['چقدر'], chist: ['چیست'], chiye: ['چیه'],
+  neshan: ['نشان'], barresi: ['بررسی'], bargozari: ['برگزاری'],
   koja: ['کجا'], key: ['کی'], cherah: ['چرا'], che: ['چه'], kodam: ['کدام'],
   hame: ['همه'], hamash: ['همه'], faghat: ['فقط'], faqat: ['فقط'],
+  khabar: ['خبر'], khabari: ['خبری'], hich: ['هیچ'], chetor: ['چطور'], chetori: ['چطوری'],
+  khoob: ['خوب'], khoobi: ['خوبی'], agha: ['آقا'], khanom: ['خانم'],
   // پیشینه و زمان
   emrooz: ['امروز'], farda: ['فردا'], dirouz: ['دیروز'], sal: ['سال'], mah: ['ماه'],
   hafte: ['هفته'], rooz: ['روز'], tarikh: ['تاریخ'], date: ['تاریخ'], saat: ['ساعت'],
+  // ماه‌های شمسی
+  farvardin: ['فروردین'], ordibehesht: ['اردیبهشت'], khordad: ['خرداد'], tir: ['تیر'],
+  mordad: ['مرداد'], shahrivar: ['شهریور'], mehr: ['مهر'], aban: ['آبان'],
+  azar: ['آذر'], dey: ['دی'], bahman: ['بهمن'], esfand: ['اسفند'],
+  // اعداد
+  yek: ['یک'], do: ['دو'], se: ['سه'], chahar: ['چهار'], panj: ['پنج'], shesh: ['شش'],
+  haft: ['هفت'], hasht: ['هشت'], noh: ['نه'], dah: ['ده'], bist: ['بیست'], sad: ['صد'], hezar: ['هزار'],
   // اشخاص و سازمان
   karbar: ['کاربر'], user: ['کاربر'], admin: ['مدیر'], modir: ['مدیر'], mohandes: ['مهندس'],
   company: ['شرکت'], sherkat: ['شرکت'], mosavvab: ['مصوب'], namayand: ['نمایند'],
@@ -161,8 +182,18 @@ export interface FinglishInfo {
 export function analyzeFinglishToken(token: string): FinglishInfo {
   const t = token.trim();
   if (!looksFinglish(t)) return { isFinglish: false, persian: [], original: t };
-  const dict = FINGLISH_WORDS[t.toLowerCase()];
+  const lower = t.toLowerCase();
+  const dict = FINGLISH_WORDS[lower];
   if (dict) return { isFinglish: true, persian: dict, original: t };
+  // پسوند را جدا کن و ریشه را هم در واژه‌نامه ببین (pumpha → pump → پمپ، valveha → valve → شیر)
+  const suffixes = ['tarin', 'haye', 'haaye', 'tar', 'ha', 'am', 'at', 'ash', 'and', 'im', 'id', 'an', 'e'];
+  for (const s of suffixes) {
+    if (lower.length > s.length + 2 && lower.endsWith(s)) {
+      const rootDict = FINGLISH_WORDS[lower.slice(0, lower.length - s.length)];
+      if (rootDict) return { isFinglish: true, persian: rootDict, original: t };
+      break;
+    }
+  }
   const cands = transliterateFinglish(t);
   return { isFinglish: cands.length > 0, persian: cands, original: t };
 }

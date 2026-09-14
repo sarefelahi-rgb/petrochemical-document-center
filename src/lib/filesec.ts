@@ -9,9 +9,23 @@ export const ALLOWED_EXTENSIONS: Record<string, { mime: string; label: string; p
   '.tif': { mime: 'image/tiff', label: 'تصویر TIFF', previewable: false },
   '.tiff': { mime: 'image/tiff', label: 'تصویر TIFF', previewable: false },
   '.docx': { mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', label: 'Word', previewable: false },
+  '.doc': { mime: 'application/msword', label: 'Word قدیمی', previewable: false },
   '.xlsx': { mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', label: 'Excel', previewable: false },
+  '.xls': { mime: 'application/vnd.ms-excel', label: 'Excel قدیمی', previewable: false },
+  '.pptx': { mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', label: 'PowerPoint', previewable: false },
+  '.ppt': { mime: 'application/vnd.ms-powerpoint', label: 'PowerPoint قدیمی', previewable: false },
+  '.rtf': { mime: 'application/rtf', label: 'RTF', previewable: false },
+  '.odt': { mime: 'application/vnd.oasis.opendocument.text', label: 'OpenDocument متن', previewable: false },
+  '.ods': { mime: 'application/vnd.oasis.opendocument.spreadsheet', label: 'OpenDocument صفحه‌گسترده', previewable: false },
+  '.odp': { mime: 'application/vnd.oasis.opendocument.presentation', label: 'OpenDocument ارائه', previewable: false },
   '.csv': { mime: 'text/csv', label: 'CSV', previewable: true },
   '.txt': { mime: 'text/plain', label: 'متن', previewable: true },
+  '.md': { mime: 'text/markdown', label: 'Markdown', previewable: true },
+  '.log': { mime: 'text/plain', label: 'گزارش لاگ', previewable: true },
+  '.json': { mime: 'application/json', label: 'JSON', previewable: true },
+  '.xml': { mime: 'application/xml', label: 'XML', previewable: true },
+  '.html': { mime: 'text/html', label: 'HTML', previewable: true },
+  '.htm': { mime: 'text/html', label: 'HTML', previewable: true },
   '.dwg': { mime: 'application/acad', label: 'AutoCAD DWG', previewable: false },
   '.dxf': { mime: 'application/dxf', label: 'AutoCAD DXF', previewable: false },
   '.zip': { mime: 'application/zip', label: 'بایگانی ZIP', previewable: false },
@@ -35,12 +49,15 @@ function sniffSignature(buf: Buffer): string | null {
   if (hex.startsWith('89504e47')) return 'png';
   if (hex.startsWith('ffd8ff')) return 'jpeg';
   if (hex.startsWith('49492a00') || hex.startsWith('4d4d002a')) return 'tiff';
-  if (hex.startsWith('504b0304')) return 'zip'; // docx/xlsx/zip
+  if (hex.startsWith('504b0304')) return 'zip'; // docx/xlsx/pptx/odt/zip
+  if (hex.startsWith('d0cf11e0a1b11ae1')) return 'ole'; // doc/xls/ppt قدیمی (OLE2)
   if (buf.subarray(0, 4).toString('ascii') === 'AC10' || buf.subarray(0, 6).toString('ascii').startsWith('AC10')) return 'dwg';
   // DXF متنی
   const head = buf.subarray(0, 64).toString('ascii');
   if (head.includes('SECTION') || /^\s*0\s*\r?\n\s*SECTION/.test(head)) return 'dxf';
   if (buf.subarray(0, 4).toString('ascii') === 'PK\x03\x04') return 'zip';
+  // RTF متنی
+  if (buf.subarray(0, 5).toString('ascii') === '{\\rtf') return 'rtf';
   return null;
 }
 
@@ -68,7 +85,9 @@ export function checkFile(originalName: string, buf: Buffer): FileCheckResult {
   const sig = sniffSignature(buf);
   const expectedByExt: Record<string, string> = {
     '.pdf': 'pdf', '.png': 'png', '.jpg': 'jpeg', '.jpeg': 'jpeg',
-    '.tif': 'tiff', '.tiff': 'tiff', '.docx': 'zip', '.xlsx': 'zip', '.zip': 'zip', '.dwg': 'dwg',
+    '.tif': 'tiff', '.tiff': 'tiff', '.docx': 'zip', '.xlsx': 'zip', '.pptx': 'zip',
+    '.odt': 'zip', '.ods': 'zip', '.odp': 'zip', '.zip': 'zip', '.dwg': 'dwg',
+    '.doc': 'ole', '.xls': 'ole', '.ppt': 'ole',
   };
   const wanted = expectedByExt[ext];
   if (wanted && sig !== wanted) {
