@@ -34,6 +34,36 @@ const DOC_STATUS_LABELS: Record<string, string> = {
 };
 const DOC_TYPE_LABELS_FA: Record<string, string> = {};
 
+// ---------- ارتقای دقت ۱۰۰/۱۰۰: ابزارهای رتبه‌بندی ارتباطی و گسترش پرسش ----------
+// توقف‌واژه‌های فارسی — از توکن‌های جست‌وجو حذف می‌شوند تا دقت بازیابی بالا برود
+const STOPWORDS = new Set([
+  'این', 'آن', 'برای', 'که', 'با', 'از', 'به', 'در', 'است', 'هست', 'هستند', 'دارید', 'دارد', 'دارند',
+  'شده', 'شود', 'باشد', 'تا', 'هم', 'یا', 'و', 'هر', 'چه', 'چیست', 'کدام', 'چند', 'لطفا', 'لطفاً',
+  'می', 'را', 'بر', 'درباره', 'کن', 'کنید', 'بده', 'بگو', 'نشان', 'فقط', 'همه', 'بین', 'روی', 'اگر',
+  'چون', 'باید', 'مورد', 'موارد', 'بوده', 'بود', 'خواهد', 'چگونه', 'چطور', 'کجا', 'چیزی', 'سلام',
+  'ممنون', 'سپاس', 'اسناد', 'سند', 'پروژه', 'مجاز', 'دستیار', 'میخواهم', 'نمی', 'های', 'هایی', 'هایی'
+]);
+// نگاشت واژه‌های پرسش فارسی → نام فیلدهای فنی استخراج‌شده (کادر عنوان/MTO)
+const FIELD_SYNONYMS: Record<string, string[]> = {
+  'کلاس': ['CLASS', 'CLS'], 'سایز': ['SIZE', 'SIZE_MAIN'], 'قطر': ['SIZE', 'SIZE_MAIN'],
+  'متریال': ['MATERIAL'], 'خط': ['LINE'], 'برچسب': ['TAG'], 'تگ': ['TAG'],
+  'مقیاس': ['SCALE'], 'نسخه': ['REV'], 'برگه': ['SHEET'], 'شیت': ['SHEET'],
+};
+
+function questionTokens(faQ: string): string[] {
+  return Array.from(new Set(faQ.split(/\s+/).filter((t) => t.length >= 3 && !STOPWORDS.has(t)))).slice(0, 10);
+}
+// فقط کدهای واقعی مهندسی (لاتین دارای رقم) — واژه‌های فارسی و کدهای بی‌رقم حذف
+function realCodes(q: string): string[] {
+  return candidateCodes(q).filter((c) => /^[A-Z0-9][A-Z0-9\-_.]*$/.test(c) && /\d/.test(c));
+}
+function countOccurrences(haystack: string, needle: string): number {
+  if (!needle) return 0;
+  let idx = 0, cnt = 0;
+  while ((idx = haystack.indexOf(needle, idx)) !== -1) { cnt++; idx += needle.length; if (cnt >= 8) break; }
+  return cnt;
+}
+
 function fmtVal(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
   return String(v);
@@ -91,6 +121,8 @@ export async function POST(req: NextRequest) {
   const citations: Citation[] = [];
   const evidence: Evidence[] = [];
   const seen = new Set<string>();
+  // سقف پویا: در حالت خوانش تصویری جای شاهد بینایی رزرو می‌شود تا حذف نشود
+  const MAX_EVIDENCE = visionPage ? 24 : 18;
   const pushCitation = (
     c: Omit<Citation, 'project'> & { project?: string },
     page?: number | null,
@@ -99,7 +131,7 @@ export async function POST(req: NextRequest) {
     const full: Citation = { ...c, project: c.project ?? '', page: page ?? null, snippet: snippet ?? null };
     const dedupeKey = `${full.documentId}:${full.page ?? ''}:${full.snippet?.slice(0, 40) ?? ''}`;
     if (seen.has(dedupeKey)) return null;
-    if (citations.length >= 18) return null;
+    if (citations.length >= MAX_EVIDENCE) return null;
     seen.add(dedupeKey);
     citations.push(full);
     const key = `E${evidence.length + 1}`;
@@ -185,7 +217,7 @@ export async function POST(req: NextRequest) {
       if (!extByPage.has(p)) extByPage.set(p, [] as typeof extractions);
       extByPage.get(p)!.push(e);
     }
-    for (const [p, exts] of Array.from(extByPage.entries()).slice(0, 8)) {
+    for (const [p, exts] of Array.from(extByPage.entries()).slice(0, 5)) {
       const summary = exts.slice(0, 14).map((e) => `${e.field}=${e.valueRaw}${e.status === 'CONFIRMED' || e.status === 'EDITED' ? '' : ' (تأییدنشده)'}`).join('؛ ');
       pushCitation(
         { documentId: d.id, docNumber: d.docNumber, title: d.title, project: d.project.code, revision: currentRev?.revisionCode || null, revStatus: currentRev?.status || null },
@@ -194,8 +226,8 @@ export async function POST(req: NextRequest) {
     }
 
     // شاهد ۴+: متن صفحات (لایهٔ متن/OCR) — کامل‌تر از حالت عمومی
-    for (const pt of pageTexts.slice(0, 12)) {
-      const snippet = (pt.textRaw || '').slice(0, 900);
+    for (const pt of pageTexts.slice(0, 8)) {
+      const snippet = (pt.textRaw || '').slice(0, 1000);
       if (!snippet.trim()) continue;
       pushCitation(
         {
@@ -241,12 +273,15 @@ export async function POST(req: NextRequest) {
   }
 
   // --- بازیابی عمومی (وقتی محدود به سند نیستیم، جست‌وجوی سراسری مجاز) ---
-  const codes = candidateCodes(q);
+  const codes = realCodes(q);
   const faQ = normalizeFa(q);
-  const qTokens = Array.from(new Set(faQ.split(/\s+/).filter((t) => t.length >= 3))).slice(0, 8);
+  const qTokens = questionTokens(faQ);
+  const fieldHints = new Set<string>();
+  for (const [fa, fields] of Object.entries(FIELD_SYNONYMS)) if (faQ.includes(fa)) fields.forEach((f) => fieldHints.add(f));
+  const aggregateIntent = /(چند|تعداد|جمع|مجموع|میانگین|سهم|چقدر|در کل|مجموعا)/.test(faQ);
 
   if (!docId) {
-    const [byNumber, byTitle, byLink, pageHits, extractionHits] = await Promise.all([
+    const [byNumber, byTitle, byLink, pageHits, extractionHits, mtoHits] = await Promise.all([
       codes.length
         ? db.document.findMany({ where: { ...baseDocWhere, OR: codes.map((c) => ({ docNumber: { contains: c } })) }, include: { project: { select: { code: true } }, revisions: { orderBy: { createdAt: 'desc' }, take: 1, select: { revisionCode: true, status: true } } }, take: 6 })
         : Promise.resolve([]),
@@ -263,7 +298,7 @@ export async function POST(req: NextRequest) {
             take: 6,
           })
         : Promise.resolve([]),
-      // متن صفحات (لایهٔ متن یا OCR) — فقط اسناد مجاز
+      // متن صفحات (لایهٔ متن یا OCR) — کاندیدها سپس رتبه‌بندی ارتباطی
       qTokens.length
         ? db.pageText.findMany({
             where: {
@@ -278,54 +313,119 @@ export async function POST(req: NextRequest) {
                 },
               },
             },
-            take: 40,
+            take: 60,
             orderBy: { createdAt: 'desc' },
           })
         : Promise.resolve([]),
-      codes.length
+      // استخراج‌ها: هم کدها روی مقدار، هم نگاشت مترادف فارسی روی نام فیلد
+      codes.length || fieldHints.size
         ? db.docExtraction.findMany({
             where: {
-              OR: codes.flatMap((c) => [{ valueNorm: { contains: c } }, { valueRaw: { contains: c } }]),
+              OR: [
+                ...codes.flatMap((c) => [{ valueNorm: { contains: c } }, { valueRaw: { contains: c } }]),
+                ...(fieldHints.size ? [{ field: { in: Array.from(fieldHints) } }] : []),
+              ],
               document: baseDocWhere,
             },
             include: { document: { select: { id: true, docNumber: true, title: true, project: { select: { code: true } } } } },
-            take: 10,
+            take: 12,
             orderBy: { confidence: 'desc' },
+          })
+        : Promise.resolve([]),
+      // ردیف‌های MTO مطابق پرسش (متریال/کلاس/شرح)
+      [...codes, ...qTokens].length
+        ? db.mtoRow.findMany({
+            where: {
+              OR: [...codes, ...qTokens].flatMap((t) => [{ material: { contains: t } }, { cls: { contains: t } }, { rawDesc: { contains: t } }]),
+              status: { not: 'REJECTED' },
+              document: baseDocWhere,
+            },
+            include: { document: { select: { id: true, docNumber: true, title: true, project: { select: { code: true } } } } },
+            take: 30,
+            orderBy: { createdAt: 'desc' },
           })
         : Promise.resolve([]),
     ]);
 
-    // ۱) اسناد برخوردار از متن صفحه (قوی‌ترین شاهد)
-    for (const pt of pageHits.slice(0, 14)) {
-      const d = pt.file.revision?.document;
+    // ۱) صفحات با رتبه‌بندی ارتباطی (نه تازگی): امتیاز = تعداد تطبیق توکن‌ها + جایزهٔ کد + جایزهٔ عبارت کامل
+    const phraseForRank = faQ.length >= 12 ? faQ : '';
+    const rankedPages = pageHits
+      .map((pt) => {
+        const norm = pt.textNormalized || normalizeFa(pt.textRaw || '');
+        let score = 0, bestTok = '', bestCnt = 0;
+        for (const t of qTokens) {
+          const cnt = countOccurrences(norm, t);
+          if (cnt > 0) { score += cnt; if (cnt > bestCnt) { bestCnt = cnt; bestTok = t; } }
+        }
+        for (const c of codes) if (norm.includes(c)) score += 4;
+        const phraseHit = phraseForRank ? norm.includes(phraseForRank) : false;
+        if (phraseHit) score += 8;
+        return { pt, score, needle: phraseHit ? phraseForRank : bestTok };
+      })
+      .filter((s) => s.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 12);
+    for (const rp of rankedPages) {
+      const d = rp.pt.file.revision?.document;
       if (!d) continue;
-      const snippet = snippetAround(pt.textRaw, qTokens[0] || faQ);
+      const snippet = snippetAround(rp.pt.textRaw, rp.needle || faQ);
       pushCitation(
         {
           documentId: d.id, docNumber: d.docNumber, title: d.title,
-          revision: pt.file.revision?.revisionCode || d.revisions[0]?.revisionCode || null,
-          revStatus: pt.file.revision?.status || d.revisions[0]?.status || null,
+          revision: rp.pt.file.revision?.revisionCode || d.revisions[0]?.revisionCode || null,
+          revStatus: rp.pt.file.revision?.status || d.revisions[0]?.status || null,
         },
-        pt.pageNumber,
-        snippet.slice(0, 500),
+        rp.pt.pageNumber,
+        snippet.slice(0, 700),
       );
     }
-    // ۲) اسناد بر اساس شماره سند
-    for (const d of byNumber) {
-      pushCitation({ documentId: d.id, docNumber: d.docNumber, title: d.title, project: d.project.code, revision: d.revisions[0]?.revisionCode || null, revStatus: d.revisions[0]?.status || null });
+    // ۲) اسناد بر اساس شماره سند — با شناسنامهٔ کامل (وضعیت مهندسی/پردازش/رشته/نوع)
+    for (const d of byNumber.slice(0, 5)) {
+      const r0 = d.revisions[0];
+      pushCitation(
+        { documentId: d.id, docNumber: d.docNumber, title: d.title, project: d.project.code, revision: r0?.revisionCode || null, revStatus: r0?.status || null },
+        null,
+        `شناسنامهٔ سند ${d.docNumber}: عنوان «${d.title}» | پروژه ${d.project.code} | رشته ${d.discipline} | نوع ${d.docType} | وضعیت سند ${DOC_STATUS_LABELS[d.status] || d.status} | محور مهندسی ${d.engineeringStatus} | محور پردازش ${d.processingStatus}${r0 ? ` | نسخهٔ جاری ${r0.revisionCode} (${r0.status})` : ''}`,
+      );
     }
-    // ۳) استخراج‌های مربوط به کدها (Tag/Line/Class)
-    for (const ex of extractionHits.slice(0, 4)) {
-      const dup = citations.find((c) => c.documentId === ex.document.id);
-      if (dup && !dup.snippet) dup.snippet = `${ex.field}: ${ex.valueRaw} (اطمینان ${(ex.confidence * 100).toFixed(0)}٪ — استخراج‌شده، تأییدنشده)`;
-      else if (!dup) pushCitation({ documentId: ex.document.id, docNumber: ex.document.docNumber, title: ex.document.title, project: ex.document.project.code, revision: null, revStatus: null }, ex.pageNumber, `${ex.field}: ${ex.valueRaw}`);
+    // ۳) استخراج‌های کادر عنوان — گروه‌بندی بر سند (تا ۵ سند، ۶ فیلد)
+    const extByDoc = new Map<string, typeof extractionHits>();
+    for (const ex of extractionHits) {
+      if (!extByDoc.has(ex.document.id)) extByDoc.set(ex.document.id, [] as typeof extractionHits);
+      const arr = extByDoc.get(ex.document.id)!;
+      if (arr.length < 6) arr.push(ex);
     }
-    // ۴) اسناد بر اساس عنوان
+    for (const [, exts] of Array.from(extByDoc.entries()).slice(0, 5)) {
+      const ex0 = exts[0];
+      const summary = exts.map((e) => `${e.field}=${e.valueRaw}${e.status === 'CONFIRMED' || e.status === 'EDITED' ? '' : ' (تأییدنشده)'}`).join('؛ ');
+      pushCitation(
+        { documentId: ex0.document.id, docNumber: ex0.document.docNumber, title: ex0.document.title, project: ex0.document.project.code, revision: null, revStatus: null },
+        ex0.pageNumber || null,
+        `استخراج کادر عنوان: ${summary}`,
+      );
+    }
+    // ۴) ردیف‌های MTO مطابق پرسش — گروه‌بندی بر سند
+    const mtoByDoc = new Map<string, typeof mtoHits>();
+    for (const m of mtoHits) {
+      if (!mtoByDoc.has(m.document.id)) mtoByDoc.set(m.document.id, [] as typeof mtoHits);
+      const arr = mtoByDoc.get(m.document.id)!;
+      if (arr.length < 10) arr.push(m);
+    }
+    for (const [, rows] of Array.from(mtoByDoc.entries()).slice(0, 3)) {
+      const m0 = rows[0];
+      const body = rows.map((r) => `${r.rawDesc} | متریال: ${fmtVal(r.material)} | سایز: ${fmtVal(r.sizeMain)}${r.sizeBranch ? `→${r.sizeBranch}` : ''} | کلاس: ${fmtVal(r.cls)} | مقدار: ${r.qty}`).join('\n');
+      pushCitation(
+        { documentId: m0.document.id, docNumber: m0.document.docNumber, title: m0.document.title, project: m0.document.project.code, revision: null, revStatus: null },
+        m0.pageNumber || null,
+        `ردیف‌های MTO مطابق پرسش:\n${body}`,
+      );
+    }
+    // ۵) اسناد بر اساس عنوان
     for (const d of byTitle) {
       if (citations.length >= 18) break;
       pushCitation({ documentId: d.id, docNumber: d.docNumber, title: d.title, project: d.project.code, revision: d.revisions[0]?.revisionCode || null, revStatus: d.revisions[0]?.status || null });
     }
-    // ۵) اسناد بر اساس Tag/Line
+    // ۶) اسناد بر اساس Tag/Line
     for (const l of byLink) {
       if (citations.length >= 18) break;
       const d = l.document;
@@ -337,6 +437,41 @@ export async function POST(req: NextRequest) {
   }
 
   const hasPageEvidence = evidence.some((e) => e.page != null && e.snippet);
+
+  // --- آمار دقیق پایگاه‌داده (ضد توهم در شمارش/جمع) — به پیام مدل تزریق می‌شود، شاهد UI نیست ---
+  let statsBlock = '';
+  try {
+    const statsLines: string[] = [];
+    const [totalDocs, byProj] = await Promise.all([
+      db.document.count({ where: baseDocWhere }),
+      db.document.groupBy({ by: ['projectId'], where: baseDocWhere, _count: true }),
+    ]);
+    const projs = byProj.length
+      ? await db.project.findMany({ where: { id: { in: byProj.map((b) => b.projectId) } }, select: { id: true, code: true } })
+      : [];
+    statsLines.push(`تعداد کل اسناد مجاز شما: ${totalDocs}`);
+    if (byProj.length) statsLines.push(`بر پایهٔ پروژه: ${byProj.map((b) => `${projs.find((p) => p.id === b.projectId)?.code || '?'}: ${b._count}`).join('، ')}`);
+    if (aggregateIntent) {
+      const [byStatus, byEng] = await Promise.all([
+        db.document.groupBy({ by: ['status'], where: baseDocWhere, _count: true }),
+        db.document.groupBy({ by: ['engineeringStatus'], where: baseDocWhere, _count: true }),
+      ]);
+      if (byStatus.length) statsLines.push(`بر پایهٔ وضعیت سند: ${byStatus.map((b) => `${DOC_STATUS_LABELS[b.status] || b.status}: ${b._count}`).join('، ')}`);
+      if (byEng.length) statsLines.push(`بر پایهٔ محور مهندسی: ${byEng.map((b) => `${b.engineeringStatus}: ${b._count}`).join('، ')}`);
+    }
+    if (docId && scopedDoc) {
+      const [mtoAgg, pagesCnt, extsCnt] = await Promise.all([
+        db.mtoRow.groupBy({ by: ['material', 'sizeMain'], where: { documentId: scopedDoc.id, status: { not: 'REJECTED' } }, _sum: { qty: true }, _count: true }),
+        db.pageText.count({ where: { file: { quarantine: false, revision: { documentId: scopedDoc.id } } } }),
+        db.docExtraction.count({ where: { documentId: scopedDoc.id, status: { not: 'REJECTED' } } }),
+      ]);
+      if (pagesCnt) statsLines.push(`سند جاری: ${pagesCnt} صفحه با متن استخراج‌شده، ${extsCnt} استخراج کادر عنوان`);
+      if (mtoAgg.length) statsLines.push(`جمع MTO سند جاری (محاسبهٔ دقیق): ${mtoAgg.map((g) => `${g.material || 'نامشخص'} سایز ${g.sizeMain || '—'}: ${g._sum.qty ?? 0}`).join('؛ ')} | جمع کل مقدارها: ${mtoAgg.reduce((s, g) => s + (g._sum.qty ?? 0), 0)}`);
+    }
+    if (statsLines.length) {
+      statsBlock = `\n\nآمار دقیق پایگاه‌داده (این عددها مستقیماً از پایگاه‌داده محاسبه شده‌اند و معتبرند — برای هر پرسش شمارش/جمع فقط همین عددها را عیناً بیاور):\n${statsLines.map((l) => '• ' + l).join('\n')}`;
+    }
+  } catch { statsBlock = ''; }
 
   // --- خواندن تصویری صفحه (مدل بینایی — مکمل OCR برای دقت بالاتر) ---
   let visionNote = '';
@@ -400,6 +535,7 @@ export async function POST(req: NextRequest) {
   // --- تولید پاسخ با مدل؛ در نبود سرویس، حالت واژگانی صادقانه ---
   let answer: string;
   let mode: 'model' | 'lexical' | 'no-evidence' = 'lexical';
+  let verification: 'passed' | 'corrected' | 'warned' | 'skipped' = 'skipped';
   const modelAvailable = !gatewayCircuitOpen();
 
   if (modelAvailable) {
@@ -426,6 +562,8 @@ export async function POST(req: NextRequest) {
       '۵) مقادیر استخراج‌شده و خوانش OCR/بینایی «تأییدنشده»اند؛ ناخواناها را حدس نزن و «ناخوانا» گزارش کن. تأیید نهایی با کارشناس است.',
       '۶) ساختار پاسخ: پاسخ کوتاه، یافته‌های مستند (با استناد)، جدول در صورت شمارش/مقایسه، اختلاف‌ها یا اطلاعات ناکافی، و اقدام پیشنهادی.',
       '۷) در اختلاف نسخه‌ها، هر دو منبع و وضعیتشان را نشان بده. از Markdown برای ساختار و جدول استفاده کن.',
+      '۸) برای پرسش شمارش، جمع یا مقایسهٔ کمّی، فقط از بلوک «آمار دقیق پایگاه‌داده» استفاده کن و اعداد را عیناً بیاور؛ از شمردن حافظه‌ای شواهد خودداری کن.',
+      '۹) هیچ عدد، شماره سند، کد یا مقدار فنی از حافظهٔ خودت نساز؛ اگر در شواهد یا آمار نیست، صریح بنویس «در اسناد مجاز موجود یافت نشد».',
     ].join('\n');
 
     const scopeLine = scopeNote ? `محدوده: ${scopeNote}\n` : '';
@@ -438,17 +576,56 @@ export async function POST(req: NextRequest) {
     const result = await chatComplete(
       [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: `${historyTurns}${scopeLine}${visionLine}${webLine}شواهد بازیابی‌شده از اسناد مجاز کاربر:\n${evidenceBlock}${webBlock}\n\nپرسش کاربر: ${q}` },
+        { role: 'user', content: `${historyTurns}${scopeLine}${visionLine}${webLine}شواهد بازیابی‌شده از اسناد مجاز کاربر:\n${evidenceBlock}${statsBlock}${webBlock}\n\nپرسش کاربر: ${q}` },
       ],
-      { timeoutMs: 120_000, maxAttempts: 2 },
+      { timeoutMs: 120_000, maxAttempts: 3 },
     );
 
+    // ---- گیت راستی‌آزمایی قطعی (دقت ۱۰۰/۱۰۰) ----
+    // هر کد و هر عددِ چندرقمی در پاسخ باید عیناً در شواهد/آمار/پرسش باشد؛ وگرنه یک نوبت اصلاح، و در نهایت هشدار صریح.
+    const validKeys = new Set([...evidence.map((e) => e.key), ...webEvidence.map((w) => w.key)]);
+    const cleanRefs = (s: string) => s.replace(/\[(E|W)(\d+)\]/g, (m, p, n) => (validKeys.has(`${p}${n}`) ? m : ''));
+    const verificationCorpus = normalizeFa([
+      ...evidence.map((e) => `${e.docNumber} ${e.title} ${e.snippet || ''}`),
+      ...webEvidence.map((w) => `${w.title} ${w.snippet} ${w.url || ''}`),
+      statsBlock, scopeNote, visionNote, webNote, q,
+    ].join(' ‖ '));
+    const hardClaims = (s: string): string[] => {
+      // ارجاع‌های شواهد (براکتی یا لخت مثل E10) ادعا نیستند — قبل از استخراج حذف می‌شوند
+      const stripped = s.replace(/\[(E|W)\d+\]/gi, ' ').replace(/\b(?:E|W)\d{1,2}\b/g, ' ');
+      const normAns = normalizeFa(stripped);
+      const out = new Set<string>();
+      for (const m of normAns.matchAll(/[A-Z0-9]*\d[A-Z0-9\-_.]*/g)) {
+        const t = m[0].replace(/^[.\-_]+|[.\-_]+$/g, '');
+        if (t.length >= 3 && t.replace(/\D/g, '').length >= 2) out.add(t);
+      }
+      for (const c of realCodes(stripped)) out.add(c.replace(/[.\-_]+$/, ''));
+      // تطبیق دوگانه: فرم خام و فرم نرمال‌شده (خط‌تیره/نقطه ↔ فاصله) هر دو پذیرفته می‌شوند
+      return Array.from(out).filter((t) => !verificationCorpus.includes(t) && !verificationCorpus.includes(normalizeFa(t)));
+    };
+
     if (result.ok) {
-      // اعتبارسنجی ارجاع‌ها: فقط [E#]/[W#] موجود — بقیه حذف می‌شوند (سیاست §62)
-      const validKeys = new Set([...evidence.map((e) => e.key), ...webEvidence.map((w) => w.key)]);
-      answer = result.content.replace(/\[(E|W)(\d+)\]/g, (m, p, n) => (validKeys.has(`${p}${n}`) ? m : ''));
-      answer = answer.trim();
+      answer = cleanRefs(result.content).trim();
       mode = 'model';
+      let unsupported = hardClaims(answer);
+      verification = unsupported.length === 0 ? 'passed' : 'warned';
+      if (unsupported.length > 0 && evidence.length) {
+        const fix = await chatComplete(
+          [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `${scopeLine}شواهد:\n${evidenceBlock}${statsBlock}${webBlock}\n\nپاسخ پیشین تو به پرسش «${q}»:\n${answer}\n\nموارد زیر در شواهد و آمار موجود نیستند: ${unsupported.join('، ')}.\nفقط همین موارد را حذف یا اصلاح کن، ساختار بقیهٔ پاسخ را نگه دار و فقط پاسخ نهایی را بده.` },
+          ],
+          { timeoutMs: 90_000, maxAttempts: 1 },
+        );
+        if (fix.ok && fix.content.trim().length > 20) {
+          answer = cleanRefs(fix.content).trim();
+          unsupported = hardClaims(answer);
+          verification = unsupported.length === 0 ? 'corrected' : 'warned';
+        }
+      }
+      if (verification === 'warned' && unsupported.length) {
+        answer += `\n\n⚠️ راستی‌آزمایی خودکار: موارد «${unsupported.slice(0, 6).join('، ')}» در شواهد مستند یافت نشد — پیش از استفاده حتماً بررسی کارشناسی شود.`;
+      }
     } else {
       answer = citations.length
         ? `سرویس مدل زبانی موقتاً در دسترس نیست (${result.error || 'خطای نامشخص'}). نتیجهٔ جست‌وجوی واژگانی مستند در منابع زیر ارائه می‌شود — هیچ پاسخ ساختگی تولید نشد.`
@@ -468,7 +645,7 @@ export async function POST(req: NextRequest) {
     answer += '\n\nتوجه: این سند هنوز متن صفحه (لایهٔ متنی/OCR) پردازش‌شده ندارد؛ پاسخ از شناسنامه، استخراج‌ها و اطلاعات ثبت‌شدهٔ سند است. برای خواندن محتوای نقشه، فایل را برای پردازش صف کنید.';
   }
 
-  await audit({ organizationId: ctx.organizationId, actorId: auth.user.id, actorName: auth.user.fullName, action: 'ASSISTANT_QUERY', detail: `mode=${mode} citations=${citations.length} web=${webEvidence.length} docId=${docId ? 'yes' : 'no'} vision=${visionPage || 'no'}` });
+  await audit({ organizationId: ctx.organizationId, actorId: auth.user.id, actorName: auth.user.fullName, action: 'ASSISTANT_QUERY', detail: `mode=${mode} verif=${verification} citations=${citations.length} web=${webEvidence.length} docId=${docId ? 'yes' : 'no'} vision=${visionPage || 'no'}` });
 
   // ذخیرهٔ پاسخ در گفتگو (شامل شواهد وب برای نمایش مجدد)
   const citationsForSave = [
@@ -479,7 +656,7 @@ export async function POST(req: NextRequest) {
     data: { conversationId: conv.id, role: 'ASSISTANT', content: answer, citations: JSON.stringify(citationsForSave) },
   });
 
-  return jsonOk({ conversationId: conv.id, answer, mode, citations: citationsForSave, modelAvailable });
+  return jsonOk({ conversationId: conv.id, answer, mode, verification, citations: citationsForSave, modelAvailable });
 }
 
 // راهنمای نوع‌ها برای برچسب‌ها (فعلاً استفادهٔ داخلی)

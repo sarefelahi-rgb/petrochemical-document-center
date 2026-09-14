@@ -17,7 +17,9 @@ export interface GatewayResult {
 
 let cachedClient: ZAI | null = null;
 let lastFailureAt = 0;
-const CIRCUIT_COOLDOWN_MS = 30_000; // Circuit Breaker ساده: پس از شکست، ۳۰ ثانیه تلاش نشود
+const CIRCUIT_COOLDOWN_MS = 30_000; // Circuit Breaker ساده: پس از شکست کامل، ۳۰ ثانیه تلاش نشود
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function getClient(): Promise<ZAI> {
   if (!cachedClient) cachedClient = await ZAI.create();
@@ -26,6 +28,10 @@ async function getClient(): Promise<ZAI> {
 
 export function gatewayCircuitOpen(): boolean {
   return Date.now() - lastFailureAt < CIRCUIT_COOLDOWN_MS;
+}
+
+function isRateLimitError(msg: string): boolean {
+  return /429|too many requests/i.test(msg);
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
@@ -40,7 +46,7 @@ export async function chatComplete(
   opts?: { timeoutMs?: number; maxAttempts?: number; maxTokensHint?: string },
 ): Promise<GatewayResult> {
   const timeoutMs = opts?.timeoutMs ?? 60_000;
-  const maxAttempts = opts?.maxAttempts ?? 2;
+  const maxAttempts = opts?.maxAttempts ?? 3;
   const started = Date.now();
   let lastError = '';
 
@@ -64,12 +70,14 @@ export async function chatComplete(
       return { ok: true, content, durationMs, attempts: attempt };
     } catch (e) {
       lastError = (e as Error).message || 'خطای نامشخص مدل';
-      lastFailureAt = Date.now();
       if (attempt < maxAttempts) {
-        await new Promise((r) => setTimeout(r, 800 * attempt)); // Backoff
+        // خطای ۴۲۹: انتظار بلندتر پیش از تلاش مجدد (circuit را باز نمی‌کنیم)
+        await sleep(isRateLimitError(lastError) ? 3000 * attempt : 800 * attempt);
       }
     }
   }
+  // فقط پس از شکست همهٔ تلاش‌ها مدار قطع می‌شود
+  lastFailureAt = Date.now();
   return { ok: false, content: '', error: lastError, durationMs: Date.now() - started, attempts: maxAttempts };
 }
 
@@ -101,8 +109,9 @@ export async function webSearch(
     await audit({ action: 'MODEL_USAGE', detail: `web_search num=${items.length}` });
     return { ok: true, results: items };
   } catch (e) {
-    lastFailureAt = Date.now();
-    return { ok: false, results: [], error: (e as Error).message || 'خطای جست‌وجوی وب' };
+    const msg = (e as Error).message || 'خطای جست‌وجوی وب';
+    if (!isRateLimitError(msg)) lastFailureAt = Date.now();
+    return { ok: false, results: [], error: msg };
   }
 }
 
@@ -140,7 +149,8 @@ export async function visionRead(
     await audit({ action: 'MODEL_USAGE', detail: `vision chars=${content.length} durationMs=${durationMs}` });
     return { ok: true, content, durationMs, attempts: 1 };
   } catch (e) {
-    lastFailureAt = Date.now();
-    return { ok: false, content: '', error: (e as Error).message || 'خطای مدل بینایی', durationMs: Date.now() - started, attempts: 1 };
+    const msg = (e as Error).message || 'خطای مدل بینایی';
+    if (!isRateLimitError(msg)) lastFailureAt = Date.now();
+    return { ok: false, content: '', error: msg, durationMs: Date.now() - started, attempts: 1 };
   }
 }
