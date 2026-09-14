@@ -15,10 +15,15 @@ export const PAGE_IMAGE_DPI = 150;
 
 async function toolVersion(cmd: string, args: string[]): Promise<string> {
   try {
-    const { stdout } = await run(cmd, args, { timeout: 15000 });
-    return stdout.split('\n')[0].trim().slice(0, 80);
+    // some tools (pdftoppm -v) print version to stderr — merge streams
+    const opts = { timeout: 15000, all: true, encoding: 'buffer' as const } as ExecFileOptionsWithBufferEncoding;
+    const { stdout } = await run(cmd, args, opts);
+    return stdout.toString().split('\n')[0].trim().slice(0, 80);
   } catch (e) {
-    return (e as { stdout?: string }).stdout?.split('\n')[0]?.trim()?.slice(0, 80) || 'unknown';
+    const err = e as { stdout?: Buffer; all?: Buffer };
+    const out = (err.all || err.stdout || Buffer.alloc(0)).toString();
+    const v = out.split('\n')[0]?.trim()?.slice(0, 80);
+    return v || 'unknown';
   }
 }
 export const tesseractVersion = () => toolVersion('tesseract', ['--version']);

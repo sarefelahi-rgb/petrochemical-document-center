@@ -129,14 +129,14 @@ function PdfViewer({ target, onClose }: { target: ViewerTarget; onClose: () => v
       const pdfDoc = (await lib.getDocument({ data }).promise) as unknown as NonNullable<typeof pdfDocRef.current>;
       pdfDocRef.current = pdfDoc;
       setPageCount(pdfDoc.numPages);
-      const meta = await api<{ extractions: { items: ExtractRow[] } }>(`/api/documents/${doc.documentId}/extractions`).catch(() => null);
-      if (meta) setExtractions(meta.extractions.items as unknown as ExtractRow[]);
+      const meta = await api<{ items: ExtractRow[] }>(`/api/documents/${doc.documentId}/extractions`).catch(() => null);
+      if (meta?.items) setExtractions(meta.items as unknown as ExtractRow[]);
       setLoading(false);
     } catch (e) {
       setError((e as Error).message || 'خطا در بارگذاری');
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [file.id, doc.documentId]);
 
   useEffect(() => { loadPdf(); }, [loadPdf]);
@@ -179,7 +179,7 @@ function PdfViewer({ target, onClose }: { target: ViewerTarget; onClose: () => v
         if (showTextLayer) {
           const lib = await loadPdfjs();
           const textContent = await pg.streamTextContent();
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           const layer = new (lib as any).TextLayer({ textContentSource: textContent, container: tl, viewport });
           await layer.render();
         }
@@ -194,7 +194,7 @@ function PdfViewer({ target, onClose }: { target: ViewerTarget; onClose: () => v
     if (!loading && target.initialPage && target.highlightRect) {
       flashRect(target.highlightRect);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [loading]);
 
   function flashRect(rect: [number, number, number, number]) {

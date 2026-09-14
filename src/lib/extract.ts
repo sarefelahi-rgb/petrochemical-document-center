@@ -237,7 +237,7 @@ export async function extractFromFile(absPath: string, originalName: string, opt
     if (ext === '.pdf') {
       const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
       const data = new Uint8Array(fs.readFileSync(absPath));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const doc = await (pdfjs as any).getDocument({ data, useWorkerFetch: false, isEvalSupported: false, useSystemFonts: false, disableFontFace: true, verbosity: 0 }).promise;
       const pageCount: number = doc.numPages;
       const maxTextPages = Math.min(pageCount, 60);

@@ -93,7 +93,7 @@ export function DocumentDetail({ docId, go, openPageTarget }: { docId: string; g
     if (rev && rev.files[0]) {
       openViewerFile(rev.files[0], rev, { page: openPageTarget.page, rect: openPageTarget.rect, query: openPageTarget.query });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [doc, openPageTarget]);
 
   async function reprocess(fileId: string) {

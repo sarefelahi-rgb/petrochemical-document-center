@@ -338,7 +338,7 @@ export function IntakeView({ isAdmin }: { isAdmin: boolean }) {
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>پروژه *</Label>
-              <Select value={editFields.projectId || undefined} onValueChange={(v) => setEditFields({ ...editFields, projectId: v, projectCode: projects.find((p) => p.id === v)?.code || null })}>
+              <Select value={editFields.projectId ?? ''} onValueChange={(v) => setEditFields({ ...editFields, projectId: v, projectCode: projects.find((p) => p.id === v)?.code || null })}>
                 <SelectTrigger><SelectValue placeholder="انتخاب پروژه" /></SelectTrigger>
                 <SelectContent>
                   {projects.map((p) => <SelectItem key={p.id} value={p.id}><span className="code-ltr">{p.code}</span> {p.name}</SelectItem>)}

@@ -18,6 +18,13 @@ data/*
 !data/tessdata/
 data/tmp/
 
+# پوشه‌های آپلود/دانلود کاربران — هرگز منتشر نشوند (فایل‌های حجیم باعث شکست deploy می‌شوند)
+upload/
+download/
+*.tar
+*.tar.gz
+*.zip
+
 # ---------- database ----------
 db/*.db
 db/*.db-journal

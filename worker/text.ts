@@ -3,7 +3,7 @@
 import path from 'path';
 import { OBJECT_ROOT, type PageWords, type W } from './base';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type Pdfjs = any;
 
 let pdfjs: Pdfjs | null = null;

@@ -136,12 +136,12 @@ export function AppShell({ me, onLogout, goHome }: { me: MeInfo; onLogout: () =>
 
       <div className="flex-1 w-full max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row gap-6">
         {/* ناوبری کناری */}
-        <nav className="md:w-52 shrink-0 space-y-1" aria-label="منوی اصلی">
+        <nav className="md:w-52 shrink-0 flex md:flex-col gap-1.5 md:gap-0 md:space-y-1 overflow-x-auto md:overflow-visible -mx-4 px-4 md:mx-0 md:px-0 pb-1 md:pb-0" aria-label="منوی اصلی">
           {NAV.map((n) => (
             <button
               key={n.key}
               onClick={() => go(n.key)}
-              className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${view === n.key || (n.key === 'documents' && view === 'document') ? 'bg-teal-700 text-white' : 'hover:bg-accent'}`}
+              className={`w-auto md:w-full shrink-0 md:shrink whitespace-nowrap md:whitespace-normal flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${view === n.key || (n.key === 'documents' && view === 'document') ? 'bg-teal-700 text-white' : 'hover:bg-accent'}`}
               aria-current={view === n.key ? 'page' : undefined}
             >
               <n.icon className="h-4 w-4 shrink-0" /> {n.label}
@@ -150,7 +150,7 @@ export function AppShell({ me, onLogout, goHome }: { me: MeInfo; onLogout: () =>
           {isAdmin && (
             <button
               onClick={() => go('admin')}
-              className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${view === 'admin' ? 'bg-teal-700 text-white' : 'hover:bg-accent'}`}
+              className={`w-auto md:w-full shrink-0 md:shrink whitespace-nowrap md:whitespace-normal flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${view === 'admin' ? 'bg-teal-700 text-white' : 'hover:bg-accent'}`}
             >
               <Settings className="h-4 w-4 shrink-0" /> مدیریت
             </button>
