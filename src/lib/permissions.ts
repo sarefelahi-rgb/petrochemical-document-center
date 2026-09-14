@@ -1,0 +1,74 @@
+// کنترل دسترسی RBAC + ABAC — منع پیش‌فرض
+// مشاهده شناسنامه / مشاهده محتوا / دانلود اصل / بارگذاری / اصلاح / حذف / مدیریت = مجوزهای جدا
+
+export const ROLES = {
+  ADMIN: 'مدیر سامانه',
+  DOC_CONTROLLER: 'مدیر اسناد',
+  ENGINEER: 'مهندس رشته',
+  REVIEWER: 'بازبین',
+  APPROVER: 'تأییدکننده',
+  OPERATOR: 'بهره‌بردار',
+  CONTRACTOR: 'پیمانکار',
+  AUDITOR: 'ممیز',
+} as const;
+
+export type Role = keyof typeof ROLES;
+
+export const CLEARANCE_ORDER: Record<string, number> = {
+  PUBLIC: 0,
+  INTERNAL: 1,
+  CONFIDENTIAL: 2,
+  RESTRICTED: 3,
+};
+
+export const CLEARANCE_LABELS: Record<string, string> = {
+  PUBLIC: 'عمومی',
+  INTERNAL: 'داخلی',
+  CONFIDENTIAL: 'محرمانه',
+  RESTRICTED: 'بسیار محرمانه',
+};
+
+// چه نقش‌هایی چه اقدام‌هایی دارند (پایه؛ سهمیه پروژه در abac اعمال می‌شود)
+// doc:review = تأیید/اصلاح مقادیر استخراج‌شدهٔ شناسنامه (صف بازبینی) — مرحله B
+// processing:manage = مدیریت صف پردازش/بازپردازش — مرحله B
+const ROLE_CAPS: Record<string, string[]> = {
+  ADMIN: ['doc:view', 'doc:content', 'doc:download', 'doc:upload', 'doc:edit', 'doc:delete', 'doc:review', 'admin:manage', 'processing:manage', 'audit:view', 'reports:view', 'cartable:view'],
+  DOC_CONTROLLER: ['doc:view', 'doc:content', 'doc:download', 'doc:upload', 'doc:edit', 'doc:delete', 'doc:review', 'processing:manage', 'reports:view', 'cartable:view', 'vocab:view'],
+  ENGINEER: ['doc:view', 'doc:content', 'doc:download', 'doc:upload', 'doc:edit', 'doc:review', 'reports:view', 'cartable:view'],
+  REVIEWER: ['doc:view', 'doc:content', 'doc:download', 'doc:review', 'reports:view', 'cartable:view'],
+  APPROVER: ['doc:view', 'doc:content', 'doc:download', 'doc:review', 'reports:view', 'cartable:view'],
+  OPERATOR: ['doc:view', 'doc:content', 'cartable:view'],
+  CONTRACTOR: ['doc:view', 'doc:content', 'doc:upload', 'cartable:view'],
+  AUDITOR: ['doc:view', 'audit:view', 'reports:view', 'cartable:view'],
+};
+
+export function roleHas(role: string, cap: string): boolean {
+  return (ROLE_CAPS[role] || []).includes(cap);
+}
+
+export interface AccessContext {
+  role: string;
+  clearance: string;
+  organizationId: string;
+  projectIds: Set<string>; // عضویت صریح پروژه — منع پیش‌فرض
+}
+
+export function canViewDocument(ctx: AccessContext, doc: { organizationId: string; projectId: string; confidentiality: string }): boolean {
+  if (doc.organizationId !== ctx.organizationId) return false;
+  if (!ctx.projectIds.has(doc.projectId)) return false;
+  if (CLEARANCE_ORDER[doc.confidentiality] === undefined) return false;
+  return CLEARANCE_ORDER[doc.confidentiality] <= CLEARANCE_ORDER[ctx.clearance];
+}
+
+export function can(ctx: AccessContext, cap: string, doc?: { organizationId: string; projectId: string; confidentiality: string } | null): boolean {
+  if (!roleHas(ctx.role, cap)) return false;
+  if (doc) {
+    if (!canViewDocument(ctx, doc)) return false;
+    if (cap === 'doc:edit' || cap === 'doc:delete') {
+      // پیمانکار حق اصلاح/حذف ندارد حتی اگر عضو باشد
+      if (ctx.role === 'CONTRACTOR') return false;
+    }
+  }
+  if ((cap === 'doc:edit' || cap === 'doc:delete' || cap === 'admin:manage' || cap === 'doc:upload') && ctx.role === 'AUDITOR') return false;
+  return true;
+}

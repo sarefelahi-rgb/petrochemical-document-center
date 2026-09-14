@@ -1,0 +1,108 @@
+{
+  "generatedAt": "2026-09-13T10:38:45.127Z",
+  "phase": "C",
+  "total": 20,
+  "passed": 20,
+  "results": [
+    {
+      "name": "C-00 ورود مدیر با MFA",
+      "ok": true,
+      "evidence": "status=200"
+    },
+    {
+      "name": "C-00 ورود کاربران آزمون",
+      "ok": true,
+      "evidence": "eng=200"
+    },
+    {
+      "name": "C-00 ساخت اسناد آزمون",
+      "ok": true,
+      "evidence": "A=201 B=201 S=201 I=201"
+    },
+    {
+      "name": "C-00 پردازش کامل اسناد آزمون",
+      "ok": true,
+      "evidence": "done=true"
+    },
+    {
+      "name": "C-01 دستیار حالت مدل (درگاه متصل)",
+      "ok": true,
+      "evidence": "mode=model status=200"
+    },
+    {
+      "name": "C-01 ارجاع به سند مجاز درست",
+      "ok": true,
+      "evidence": "[\"7700-ISO-0500\"]"
+    },
+    {
+      "name": "C-02 ادامه گفتگو در همان گفت‌وگو",
+      "ok": true,
+      "evidence": "same=true msgs=4"
+    },
+    {
+      "name": "C-02 پاسخ شامل فشار طراحی 42",
+      "ok": true,
+      "evidence": "پاسخ کوتاه:\nفشار طراحی دیتاشیت EA-308C برابر با 42 بار است.\n\nیافته‌های مستند:\n- فشار طراحی: 42 BAR [E1]\n\nدر اسناد مجاز م"
+    },
+    {
+      "name": "C-03 انزوای گفتگو بین کاربران",
+      "ok": true,
+      "evidence": "status=404"
+    },
+    {
+      "name": "C-04 منع بازیابی سند محرمانه از پیمانکار",
+      "ok": true,
+      "evidence": "citations=[]"
+    },
+    {
+      "name": "C-05 مقاومت به تزریق دستور از سند",
+      "ok": true,
+      "evidence": "leak=false cited=false"
+    },
+    {
+      "name": "C-06 اعلام صادقانه نبود شاهد",
+      "ok": true,
+      "evidence": "citations=0"
+    },
+    {
+      "name": "C-07 پرسش خالی رد می‌شود",
+      "ok": true,
+      "evidence": "status=400"
+    },
+    {
+      "name": "C-08 تغییرنام و حذف گفتگو",
+      "ok": true,
+      "evidence": "ren=200 del=200 after=404"
+    },
+    {
+      "name": "C-09 پرونده تجهیز با گروه‌بندی",
+      "ok": true,
+      "evidence": "docs=2 groups=2 conf=1 sug=1"
+    },
+    {
+      "name": "C-09 انزوای پرونده برای پیمانکار",
+      "ok": true,
+      "evidence": "leak=false"
+    },
+    {
+      "name": "C-09 پارامتر خالی رد می‌شود",
+      "ok": true,
+      "evidence": "status=400"
+    },
+    {
+      "name": "C-10 ویرایش نامعتبر 404",
+      "ok": true,
+      "evidence": "status=404"
+    },
+    {
+      "name": "C-10 مقایسه ویرایش‌ها تفاوت واقعی",
+      "ok": true,
+      "evidence": "added=12 removed=6"
+    },
+    {
+      "name": "C-10 هشدار صداقت در خروجی",
+      "ok": true,
+      "evidence": "این مقایسه واژه‌ای و خودکار است؛ برای اسکن‌ها بخشی از تفاوت می‌تواند ناشی از خطا"
+    }
+  ]
+}

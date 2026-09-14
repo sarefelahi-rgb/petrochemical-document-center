@@ -1,0 +1,542 @@
+// مرکز هوشمند اسناد و نقشه‌های پتروشیمی — مدل داده (مرحله A)
+// اصل: تفکیک هویت سند منطقی / ویرایش / فایل فیزیکی + منع پیش‌فرض دسترسی + انزوای سازمان/پروژه
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- هویت و دسترسی ----------
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  users     User[]
+  projects  Project[]
+  documents Document[]
+  auditEvents AuditEvent[]
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  username           String    @unique
+  passwordHash       String
+  fullName           String
+  role               String // ADMIN | DOC_CONTROLLER | ENGINEER | REVIEWER | APPROVER | OPERATOR | CONTRACTOR | AUDITOR
+  clearance          String    @default("INTERNAL") // PUBLIC | INTERNAL | CONFIDENTIAL | RESTRICTED
+  organizationId     String
+  organization       Organization @relation(fields: [organizationId], references: [id])
+  isActive           Boolean   @default(true)
+  mustChangePassword Boolean   @default(false)
+  mfaEnabled         Boolean   @default(false)
+  mfaSecret          String? // encrypted-at-rest در استقرار تولید؛ اینجا secret manager خارج از کد
+  failedAttempts     Int       @default(0)
+  lockedUntil        DateTime?
+  lastLoginAt        DateTime?
+  isSample           Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  sessions           Session[]
+  projectMemberships ProjectMember[]
+  favorites          Favorite[]
+  cartableTasks      CartableTask[]
+  uploads            FileObject[]
+  auditEvents        AuditEvent[]
+  loginTokens        MfaChallenge[]
+  reviewTasks        ReviewTask[]       // بازبینی‌های محول‌شده
+  annotations        Annotation[]       // حاشیه‌نویسی‌های کاربر
+  docApprovals       DocApproval[]      @relation("DocApprovals") // تأییدهای محول‌شده
+}
+
+model Session {
+  id           String    @id @default(cuid())
+  tokenHash    String    @unique // SHA-256 توکن؛ توکن خام فقط در کوکی HttpOnly
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  ip           String?
+  userAgent    String?
+  createdAt    DateTime  @default(now())
+  lastSeenAt   DateTime  @default(now())
+  idleExpiresAt DateTime // انقضای بیکاری
+  hardExpiresAt DateTime // عمر کل نشست
+  revokedAt    DateTime?
+}
+
+model MfaChallenge {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  roleInProject String @default("MEMBER") // MEMBER | LEAD | VIEWER
+  createdAt DateTime @default(now())
+  @@unique([userId, projectId])
+}
+
+// ---------- ساختار فیزیکی ----------
+
+model Project {
+  id           String  @id @default(cuid())
+  organizationId String
+  organization Organization @relation(fields: [organizationId], references: [id])
+  code         String
+  name         String
+  description  String?
+  isActive     Boolean @default(true)
+  isSample     Boolean @default(false)
+  createdAt    DateTime @default(now())
+  areas        Area[]
+  documents    Document[]
+  memberships  ProjectMember[]
+  @@unique([organizationId, code])
+}
+
+model Area {
+  id        String @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id])
+  code      String
+  name      String
+  units     Unit[]
+  @@unique([projectId, code])
+}
+
+model Unit {
+  id        String @id @default(cuid())
+  areaId    String
+  area      Area   @relation(fields: [areaId], references: [id])
+  code      String
+  name      String
+  documents Document[]
+  lines     Line[]
+  @@unique([areaId, code])
+}
+
+model Line {
+  id         String @id @default(cuid())
+  unitId     String
+  unit       Unit   @relation(fields: [unitId], references: [id])
+  lineNumber String
+  sizeClass  String?
+  spec       String?
+  isSample   Boolean @default(false)
+  documents  DocLink[]
+  @@unique([unitId, lineNumber])
+}
+
+model AssetTag {
+  id          String  @id @default(cuid())
+  tag         String
+  description String?
+  tagType     String  @default("EQUIPMENT") // EQUIPMENT | INSTRUMENT | ELECTRICAL
+  areaCode    String?
+  isSample    Boolean @default(false)
+  docLinks    DocLink[]
+  @@unique([tag])
+}
+
+// ---------- اسناد ----------
+
+model Document {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id])
+  docNumber      String
+  docNumberRaw   String?  // عین متن ورودی — کدهای مهندسی تغییر نمی‌کنند
+  title          String
+  discipline     String   // RST: واژگان کنترل‌شده
+  docType        String
+  unitId         String?
+  unit           Unit?    @relation(fields: [unitId], references: [id])
+  origin         String?  // مبدأ (داخلی/پیمانکار/فروشنده)
+  ownerUnit      String?  // مالک
+  confidentiality String  @default("INTERNAL") // PUBLIC | INTERNAL | CONFIDENTIAL | RESTRICTED
+  status         String   @default("RECEIVED") // RECEIVED | PROCESSING | INCOMPLETE | IN_REVIEW | APPROVED | PUBLISHED | SUPERSEDED | ARCHIVED | VOID
+  processingStatus String @default("UPLOADED") // UPLOADED | QUARANTINED | PROCESSED | FAILED — محور مستقل ۱
+  extractionStatus String @default("NOT_EXTRACTED") // NOT_EXTRACTED | EXTRACTED_UNREVIEWED | VERIFIED — محور مستقل ۲
+  engineeringStatus String @default("UNREVIEWED") // UNREVIEWED | IN_REVIEW | APPROVED — محور مستقل ۳
+  currentRevisionId String?
+  validRevisionId  String? // نسخه معتبر برای استفاده — ممکن است با آخرین آپلود یکی نباشد
+  isSample       Boolean  @default(false)
+  createdById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  revisions      Revision[]
+  docLinks       DocLink[]
+  favorites      Favorite[]
+  extractions    DocExtraction[]  // شناسنامهٔ استخراج‌شده از مدرک
+  reviewTasks    ReviewTask[]     // صف بازبینی استخراج/کیفیت
+  mtoRows        MtoRow[]         // ردیف‌های MTO این سند
+  approvals      DocApproval[]    // گردش تأیید سند
+  transmittalItems TransmittalItem[] // اقلام ترنسمیتال‌ها
+  @@unique([organizationId, projectId, docNumber])
+}
+
+model Revision {
+  id            String   @id @default(cuid())
+  documentId    String
+  document      Document @relation(fields: [documentId], references: [id])
+  revisionCode  String   // 0,1,2,A,B,C,P1,...
+  status        String   @default("RECEIVED") // RECEIVED | IN_REVIEW | APPROVED | SUPERSEDED | VOID
+  purpose       String?  // هدف صدور (IFC/AFB/ASB/...)
+  docDate       DateTime? // تاریخ مدرک
+  receivedDate  DateTime @default(now())
+  effectiveDate DateTime? // تاریخ اثرگذاری
+  approvedById  String?
+  approvedAt    DateTime?
+  isSample      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  files         FileObject[]
+  annotations   Annotation[]  // لایهٔ حاشیه‌نویسی وابسته به نسخه
+  @@unique([documentId, revisionCode])
+}
+
+model DocLink {
+  id          String   @id @default(cuid())
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id])
+  linkType    String   // TAG | LINE | SHEET-REF
+  tagId       String?
+  assetTag    AssetTag? @relation(fields: [tagId], references: [id])
+  lineId      String?
+  line        Line?    @relation(fields: [lineId], references: [id])
+  rawRef      String?  // مرجع خام در صورت نبود تطبیق
+  linkStatus  String   @default("SUGGESTED") // SUGGESTED | CONFIRMED
+  isSample    Boolean  @default(false)
+  @@index([tagId])
+  @@index([lineId])
+}
+
+model FileObject {
+  id            String   @id @default(cuid())
+  revisionId    String?
+  revision      Revision? @relation(fields: [revisionId], references: [id])
+  kind          String   @default("ORIGINAL") // ORIGINAL | DERIVATIVE
+  storageKey    String   // کلید نسبی در مخزن — اصل تغییرناپذیر
+  originalName  String
+  mimeType      String
+  size          Int
+  sha256        String
+  quarantine    Boolean  @default(false)
+  scanStatus    String   @default("PENDING") // PENDING | CLEAN | REJECTED
+  scanNote      String?
+  isSample      Boolean  @default(false)
+  uploadedById  String?
+  user          User?    @relation(fields: [uploadedById], references: [id])
+  createdAt     DateTime @default(now())
+  jobs          ProcessingJob[]      // صف پردازش این فایل
+  pageTexts     PageText[]           // متن هر صفحه (لایهٔ متن یا OCR)
+  derivatives   DerivativeObject[]   // مشتقات: تصویر صفحه، واژه‌ها، بندانگشتی
+  annotations   Annotation[]
+  extractions   DocExtraction[]
+  @@index([sha256])
+}
+
+// ---------- پردازش مرحله B: صف کار، متن صفحات، مشتقات، استخراج، صف بازبینی ----------
+
+// صف کار پایدار — وضعیت مرحله‌ای، Retry محدود، Dead-letter، شناسه هم‌بستگی
+model ProcessingJob {
+  id             String    @id @default(cuid())
+  type           String    // TEXT_EXTRACT | OCR | TITLE_BLOCK | THUMBNAIL
+  status         String    @default("QUEUED") // QUEUED | RUNNING | DONE | FAILED | DEAD | CANCELLED
+  stage          String    @default("queued") // queued | prepare | render | extract | ocr | analyze | index | done
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(3)
+  priority       Int       @default(5) // کمتر = زودتر
+  availableAt    DateTime  @default(now()) // Backoff پس از خطا
+  fileId         String
+  file           FileObject @relation(fields: [fileId], references: [id])
+  documentId     String?
+  revisionId     String?
+  organizationId String
+  correlationId  String?   // ردیابی زنجیرهٔ پردازش یک فایل
+  workerVersion  String?
+  toolVersion    String?   // نسخهٔ ابزار ثبت‌شده (tesseract/poppler/pdfjs)
+  settingsJson   String?   // تنظیمات پردازش آن لحظه (تکرارپذیری)
+  resultJson     String?
+  error          String?
+  durationMs     Int?
+  claimedAt      DateTime?
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  heartbeatAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  @@index([status, availableAt, priority])
+  @@index([fileId])
+}
+
+// متن هر صفحه — اصل جدا نگه داشته می‌شود؛ این مشتق قابل بازتولید است
+model PageText {
+  id             String  @id @default(cuid())
+  fileId         String
+  file           FileObject @relation(fields: [fileId], references: [id])
+  revisionId     String?
+  pageNumber     Int
+  textRaw        String
+  textNormalized String
+  wordCount      Int     @default(0)
+  source         String  // TEXT_LAYER | OCR
+  ocrConfidence  Float?  // میانگین اطمینان OCR — «دقت اثبات‌شده نیست»
+  language       String? // fas+eng
+  status         String  @default("AUTO") // AUTO | REVIEWED — پردازش مجدد REVIEWED را بازنویسی نمی‌کند
+  createdAt      DateTime @default(now())
+  @@unique([fileId, pageNumber])
+}
+
+// مشتقات با ارتباط صریح به اصل (تصویر صفحه، واژه‌ها با مختصات، بندانگشتی)
+model DerivativeObject {
+  id          String  @id @default(cuid())
+  fileId      String
+  file        FileObject @relation(fields: [fileId], references: [id])
+  kind        String  // PAGE_IMAGE | WORDS | THUMB
+  storageKey  String
+  pageNumber  Int?
+  mimeType    String?
+  size        Int     @default(0)
+  meta        String? // JSON — مثلاً DPI
+  createdAt   DateTime @default(now())
+  @@index([fileId, kind, pageNumber])
+}
+
+// شناسنامهٔ استخراج‌شده از مدرک — تا تأیید کارشناس «استخراج‌شده، تأییدنشده»
+model DocExtraction {
+  id           String   @id @default(cuid())
+  documentId   String
+  document     Document @relation(fields: [documentId], references: [id])
+  revisionId   String?
+  fileId       String
+  file         FileObject @relation(fields: [fileId], references: [id])
+  field        String   // DOC_NUMBER | TITLE | REV | SHEET | SHEET_OF | TAG | LINE | CLASS | SIZE | SCALE | UNIT | PLANT | NOTE
+  valueRaw     String
+  valueNorm    String?
+  confidence   Float    // 0..1 — امتیاز مدل دقت اثبات‌شده نیست
+  source       String   // TEXT_LAYER | OCR
+  pageNumber   Int?
+  bbox         String?  // JSON [x,y,w,h] نرمال 0..1 برای هایلایت در نمایشگر
+  status       String   @default("UNREVIEWED") // UNREVIEWED | CONFIRMED | EDITED | REJECTED
+  isSuggestion Boolean  @default(false) // پیشنهاد پردازش مجدد — جایگزین مقدار تأییدشده نمی‌شود
+  toolVersion  String?
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  @@index([documentId])
+  @@index([fileId, field])
+}
+
+// صف بازبینی — اسکن کم‌کیفیت، اطمینان پایین، شکست OCR، درخواست دستی
+model ReviewTask {
+  id             String    @id @default(cuid())
+  organizationId String
+  documentId     String
+  document       Document  @relation(fields: [documentId], references: [id])
+  revisionId     String?
+  fileId         String?
+  reason         String    // LOW_CONFIDENCE | LOW_QUALITY | OCR_FAILED | MANUAL
+  detail         String?
+  payload        String?   // JSON — فیلدهای نیازمند بازبینی
+  status         String    @default("OPEN") // OPEN | IN_PROGRESS | RESOLVED | CANCELLED
+  assignedToId   String?
+  assignee       User?     @relation(fields: [assignedToId], references: [id])
+  resolvedById   String?
+  resolvedAt     DateTime?
+  resolutionNote String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  @@index([status])
+  @@index([documentId])
+}
+
+// حاشیه‌نویسی — لایهٔ جدا از اصل سند، وابسته به نسخهٔ مشخص
+model Annotation {
+  id         String   @id @default(cuid())
+  revisionId String
+  revision   Revision @relation(fields: [revisionId], references: [id])
+  fileId     String
+  file       FileObject @relation(fields: [fileId], references: [id])
+  page       Int
+  type       String   // HIGHLIGHT | PIN | NOTE
+  rect       String?  // JSON نرمال 0..1 [x,y,w,h]
+  text       String?
+  color      String   @default("#facc15")
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id])
+  resolved   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  @@index([fileId, page])
+}
+
+// ---------- کنترل مدارک: MTO، گردش تأیید، ترنسمیتال (مرحله D) ----------
+
+// ردیف MTO/BOM سند — منبع هر ردیف حفظ می‌شود (سیاست §70: تطبیق فقط با کلید فنی)
+model MtoRow {
+  id          String   @id @default(cuid())
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id])
+  revisionId  String?
+  pageNumber  Int?
+  rowLabel    String?  // شماره ردیف در مدرک مبدأ
+  rawDesc     String   // شرح خام عین مدرک
+  normDesc    String?  // شرح نرمال‌شده
+  material    String?  // متریال
+  sizeMain    String?  // سایز اصلی
+  sizeBranch  String?  // سایز انشعاب
+  cls         String?  // کلاس
+  schedule    String?
+  endConn     String?  // End Connection
+  unit        String   @default("EA")
+  qty         Float    @default(0)
+  source      String   @default("MANUAL") // MANUAL | LLM_SUGGESTION | OCR
+  status      String   @default("CONFIRMED") // SUGGESTED | CONFIRMED | REJECTED
+  note        String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([documentId])
+}
+
+// گردش تأیید سند — دورهای بازبینی با منع خودتأییدی (سیاست §78)
+model DocApproval {
+  id            String    @id @default(cuid())
+  documentId    String
+  document      Document  @relation(fields: [documentId], references: [id])
+  revisionId    String?
+  round         Int       @default(1)
+  reviewerId    String
+  reviewer      User      @relation("DocApprovals", fields: [reviewerId], references: [id])
+  decision      String    @default("PENDING") // PENDING | APPROVED | CHANGES | REJECTED
+  comment       String?
+  requestedById String?
+  decidedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  @@index([documentId])
+  @@index([reviewerId, decision])
+}
+
+// ترنسمیتال ورودی/خروجی (سیاست §79: شماره، طرفین، فهرست نسخه‌ها، هدف، وضعیت پاسخ)
+model Transmittal {
+  id             String    @id @default(cuid())
+  organizationId String
+  number         String    @unique
+  direction      String    // IN | OUT
+  party          String    // فرستنده/گیرنده سازمانی
+  purpose        String?
+  status         String    @default("DRAFT") // DRAFT | SENT | ACKNOWLEDGED | CLOSED
+  sentAt         DateTime?
+  ackAt          DateTime?
+  note           String?
+  isSample       Boolean   @default(false)
+  createdById    String?
+  items          TransmittalItem[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model TransmittalItem {
+  id            String      @id @default(cuid())
+  transmittalId String
+  transmittal   Transmittal @relation(fields: [transmittalId], references: [id])
+  documentId    String
+  document      Document    @relation(fields: [documentId], references: [id])
+  revisionId    String?
+  note          String?
+  @@unique([transmittalId, documentId])
+}
+
+// ---------- کارتابل، جست‌وجوی ذخیره‌شده ----------
+
+model CartableTask {
+  id          String    @id @default(cuid())
+  assigneeId  String
+  assignee    User      @relation(fields: [assigneeId], references: [id])
+  type        String    // REVIEW | APPROVE | INCOMPLETE_METADATA | UPLOAD_FOLLOWUP
+  title       String
+  payload     String?   // JSON
+  relatedDocId String?
+  status      String    @default("OPEN") // OPEN | DONE | CANCELLED
+  dueAt       DateTime?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+}
+
+model Favorite {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+  createdAt  DateTime @default(now())
+  @@unique([userId, documentId])
+}
+
+// ---------- حسابرسی و تنظیمات ----------
+
+model AuditEvent {
+  id        String   @id @default(cuid())
+  organizationId String?
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id])
+  actorName String? // نگهداری نام حتی پس از حذف کاربر
+  action    String   // LOGIN | LOGIN_FAILED | LOGOUT | UPLOAD | DOWNLOAD | DOC_CREATE | ...
+  objectType String?
+  objectId  String?
+  detail    String? // بدون محتوای محرمانه
+  ip        String?
+  at        DateTime @default(now())
+  @@index([action])
+  @@index([at])
+}
+
+model Vocabulary {
+  id     String @id @default(cuid())
+  domain String // DISCIPLINE | DOC_TYPE | CONFIDENTIALITY | STATUS | ORIGIN
+  code   String
+  label  String
+  order  Int    @default(0)
+  @@unique([domain, code])
+}
+
+model Setting {
+  key   String @id
+  value String
+}
+
+// ---------- دستیار (حافظه گفتگو — صادقانه: بدون مدل متصل) ----------
+
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String   @default("گفت‌وگوی جدید")
+  createdAt DateTime @default(now())
+  messages  AssistantMessage[]
+}
+
+model AssistantMessage {
+  id            String  @id @default(cuid())
+  conversationId String
+  conversation  Conversation @relation(fields: [conversationId], references: [id])
+  role          String  // USER | ASSISTANT
+  content       String
+  citations     String? // JSON ارجاع به سند/نسخه — فقط اسناد مجاز
+  createdAt     DateTime @default(now())
+}

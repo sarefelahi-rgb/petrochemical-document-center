@@ -1,0 +1,10 @@
+import { PrismaClient } from '@prisma/client';
+process.env.DATABASE_URL = 'file:' + process.cwd() + '/db/custom.db';
+const { createSampleData, purgeSampleData } = await import('../src/lib/sampleData');
+const db = new PrismaClient();
+const org = await db.organization.findFirst();
+const admin = await db.user.findFirst({ where: { role: 'ADMIN' } });
+await purgeSampleData();
+const r = await createSampleData(org!.id, admin!.id);
+console.log('created:', JSON.stringify(r.created), r.sampleUsers.map((u) => u.username).join(','));
+process.exit(0);

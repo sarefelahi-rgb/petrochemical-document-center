@@ -1,0 +1,152 @@
+[
+  {
+    "name": "A-06 ورود مدیر نیازمند MFA است",
+    "ok": true,
+    "evidence": "status=200 mfaRequired=true"
+  },
+  {
+    "name": "A-06 ورود مدیر با کد TOTP موفق",
+    "ok": true,
+    "evidence": "status=200"
+  },
+  {
+    "name": "A-04 منع پیش‌فرض بدون ورود",
+    "ok": true,
+    "evidence": "status=401"
+  },
+  {
+    "name": "A-02 ایجاد پروژه‌ها",
+    "ok": true,
+    "evidence": "A=201 B=201"
+  },
+  {
+    "name": "A-09 ایجاد کاربران با عضویت صریح",
+    "ok": true,
+    "evidence": "A=201 B=201"
+  },
+  {
+    "name": "A-05 ورود اولین بار با mustChangePassword",
+    "ok": true,
+    "evidence": "status=200"
+  },
+  {
+    "name": "A-05 تغییر رمز موفق + لغو نشست‌ها",
+    "ok": true,
+    "evidence": "status=200"
+  },
+  {
+    "name": "A-05 ورود با رمز جدید",
+    "ok": true,
+    "evidence": "status=200"
+  },
+  {
+    "name": "A-16 ایجاد شناسنامه در دو پروژه",
+    "ok": true,
+    "evidence": "A=201 B=201"
+  },
+  {
+    "name": "A-03 شماره سند یکتا در پروژه (نرمال‌سازی)",
+    "ok": true,
+    "evidence": "status=409"
+  },
+  {
+    "name": "A-12 آپلود موفق با SHA-256",
+    "ok": true,
+    "evidence": "status=201 sha=84b6ccb1c660…"
+  },
+  {
+    "name": "A-12 تشخیص محتوای تکراری",
+    "ok": true,
+    "evidence": "duplicateOf=cmtzojgjp009rugfsmpbku35o"
+  },
+  {
+    "name": "A-13 قرنطینه: پسوند pdf با محتوای غیر PDF",
+    "ok": true,
+    "evidence": "status=422"
+  },
+  {
+    "name": "A-12 شناسه عملیات یکتا جلوی ثبت تکراری",
+    "ok": true,
+    "evidence": "status=409"
+  },
+  {
+    "name": "A-10 فهرست مهندس الف فقط پروژهٔ خودش",
+    "ok": true,
+    "evidence": "count=1"
+  },
+  {
+    "name": "A-10 دسترسی مستقیم به سند پروژه ب: 404 (بدون افشای وجود)",
+    "ok": true,
+    "evidence": "status=404"
+  },
+  {
+    "name": "A-10 Query با projectId خارج از دامنه → خالی",
+    "ok": true,
+    "evidence": "total=0"
+  },
+  {
+    "name": "A-22 جست‌وجوی شماره پروژه ب برای الف → خالی",
+    "ok": true,
+    "evidence": "items=0"
+  },
+  {
+    "name": "A-22 جست‌وجو با ارقام فارسی/نرمال‌سازی",
+    "ok": true,
+    "evidence": "items=[\"1183-ISO-TEST\"]"
+  },
+  {
+    "name": "A-19 صدور توکن کوتاه‌عمر",
+    "ok": true,
+    "evidence": "status=200"
+  },
+  {
+    "name": "A-19 دانلود بدون توکن: 401",
+    "ok": true,
+    "evidence": "status=401"
+  },
+  {
+    "name": "A-19 دانلود با توکن: محتوا سالم",
+    "ok": true,
+    "evidence": "status=200 bytes=649"
+  },
+  {
+    "name": "A-19 توکن یک‌بارمصرف: استفاده دوباره → 401",
+    "ok": true,
+    "evidence": "status=401"
+  },
+  {
+    "name": "A-10 توکن دانلود فایل پروژه ب برای الف: ممنوع",
+    "ok": true,
+    "evidence": "status=404"
+  },
+  {
+    "name": "A-30 دستیار: ارجاع فقط از اسناد مجاز",
+    "ok": true,
+    "evidence": "citations=2 model=true"
+  },
+  {
+    "name": "A-10 دستیار: نشت سند پروژه ب وجود ندارد",
+    "ok": true,
+    "evidence": "citations=1"
+  },
+  {
+    "name": "A-27 ایجاد داده نمونه برچسب‌خورده",
+    "ok": true,
+    "evidence": "status=200"
+  },
+  {
+    "name": "A-27 داده نمونه برای مهندس الف دیده نمی‌شود (عضو نیست)",
+    "ok": true,
+    "evidence": "count=1"
+  },
+  {
+    "name": "A-07 قفل پس از ۵ تلاش ناموفق (حتی با رمز درست)",
+    "ok": true,
+    "evidence": "locked=true final=423"
+  },
+  {
+    "name": "A-15 داده و مخزن روی دیسک پایدار (پایگاه داده فایل‌محور + objectstore)",
+    "ok": true,
+    "evidence": "sampleDocs=6 storeExists=true"
+  }
+]

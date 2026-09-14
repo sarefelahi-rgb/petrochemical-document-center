@@ -1,0 +1,128 @@
+{
+  "generatedAt": "2026-09-13T10:37:04.536Z",
+  "phase": "D",
+  "total": 24,
+  "passed": 24,
+  "results": [
+    {
+      "name": "D-00 ورود مستقیم مدیر بدون MFA (غیرفعال)",
+      "ok": true,
+      "evidence": "status=200 ok=true"
+    },
+    {
+      "name": "D-00 ورود کاربران آزمون",
+      "ok": true,
+      "evidence": "eng=200 apr=200"
+    },
+    {
+      "name": "D-00 ساخت اسناد آزمون",
+      "ok": true,
+      "evidence": "iso=201 iso2=201 sec=201"
+    },
+    {
+      "name": "D-00 پردازش کامل سند آزمون",
+      "ok": true,
+      "evidence": "done=true"
+    },
+    {
+      "name": "D-01 افزودن دستی ردیف‌های MTO",
+      "ok": true,
+      "evidence": "a=200 b=200 c=200 d=200"
+    },
+    {
+      "name": "D-02 پیشنهاد MTO با مدل زبانی (تا تأیید کارشناس «پیشنهاد»)",
+      "ok": true,
+      "evidence": "status=200 created=1"
+    },
+    {
+      "name": "D-03 تجمیع MTO: جمع دقیق روی کلید فنی",
+      "ok": true,
+      "evidence": "valveQty=6 sources=2"
+    },
+    {
+      "name": "D-03 ردیف ناقص بدون ادغام جدا می‌شود",
+      "ok": true,
+      "evidence": "incompleteQty=9"
+    },
+    {
+      "name": "D-04 انزوا: ردیف سند RESTRICTED از تجمیع مهندس حذف است",
+      "ok": true,
+      "evidence": "leak=false"
+    },
+    {
+      "name": "D-05 منع خودتأییدی: محول به خود رد می‌شود",
+      "ok": true,
+      "evidence": "status=400"
+    },
+    {
+      "name": "D-06 فهرست بازبینان بدون خودِ درخواست‌دهنده",
+      "ok": true,
+      "evidence": "candidates=2"
+    },
+    {
+      "name": "D-07 محول بازبینی + کار کارتابل + IN_REVIEW",
+      "ok": true,
+      "evidence": "req=200 task=true eng=IN_REVIEW"
+    },
+    {
+      "name": "D-08 تصمیم غیر از بازبین محول‌شده 403",
+      "ok": true,
+      "evidence": "status=403"
+    },
+    {
+      "name": "D-09 تأیید دور → نسخهٔ جاری APPROVED",
+      "ok": true,
+      "evidence": "dec=200 eng=APPROVED rev=APPROVED"
+    },
+    {
+      "name": "D-09 کار کارتابل پس از تصمیم بسته شد",
+      "ok": true,
+      "evidence": "task=DONE"
+    },
+    {
+      "name": "D-10 ایجاد ترنسمیتال + منع تکرار شماره",
+      "ok": true,
+      "evidence": "c=200 dup=409"
+    },
+    {
+      "name": "D-11 افزودن قلم (منع تکرار قلم) + ارسال",
+      "ok": true,
+      "evidence": "add=200 dup=409 sent=200"
+    },
+    {
+      "name": "D-12 انزوا: افزودن سند غیرمجاز به ترنسمیتال 404",
+      "ok": true,
+      "evidence": "status=404"
+    },
+    {
+      "name": "D-13 چرخه وضعیت: SENT→DRAFT ممنوع، حذف غیر DRAFT ممنوع، ACK→CLOSED",
+      "ok": true,
+      "evidence": "back=400 del=400 ack=200 close=200"
+    },
+    {
+      "name": "D-14 رجیستر MDR شامل سند با وضعیت و ترنسمیتال",
+      "ok": true,
+      "evidence": "rows=3 lastTr=TR-TEST-D-0001 (خروجی)"
+    },
+    {
+      "name": "D-14 خروجی CSV با BOM و هدر فارسی",
+      "ok": true,
+      "evidence": "status=200 bom=true head=شماره سند,عنوان,پروژه,واحد,رشت"
+    },
+    {
+      "name": "D-15 دستیار با محدودهٔ سند پاسخ مستند می‌دهد",
+      "ok": true,
+      "evidence": "status=200 cited=true mto=true"
+    },
+    {
+      "name": "D-16 انزوای محدودهٔ سند برای غیرمجاز 404",
+      "ok": true,
+      "evidence": "status=404"
+    },
+    {
+      "name": "D-17 پشتیبان‌گیری هماهنگ با مانیفست و SHA-256",
+      "ok": true,
+      "evidence": "db=c11bddc7b88e… originals=18"
+    }
+  ]
+}

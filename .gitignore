@@ -1,0 +1,41 @@
+# ---------- dependencies & build ----------
+node_modules/
+.next/
+out/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# ---------- environment & secrets (هرگز منتشر نشود) ----------
+.env
+.env.local
+.env.*.local
+data/initial-admin-credentials.txt
+
+# ---------- runtime data (آپلودها، قرنطینه، موقت) ----------
+# فقط data/tessdata (داده‌های آموزشی OCR فارسی/انگلیسی) در مخزن نگه داشته می‌شود
+data/*
+!data/tessdata/
+data/tmp/
+
+# ---------- database ----------
+db/*.db
+db/*.db-journal
+db/*.db-wal
+db/*.db-shm
+
+# ---------- internal workspace artifacts ----------
+tool-results/
+worklog.md
+agent-ctx/
+*.log
+
+# ---------- OS / editor ----------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# ---------- internal environment tooling (eachdar nashavad) ----------
+skills/
+.zscripts/

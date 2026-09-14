@@ -1,0 +1,292 @@
+{
+  "at": "2026-09-13T10:38:20.348Z",
+  "total": 57,
+  "pass": 57,
+  "results": [
+    {
+      "name": "B-00 ورود مدیر با MFA",
+      "ok": true,
+      "evidence": "status=200"
+    },
+    {
+      "name": "B-00 ایجاد پروژه آزمون",
+      "ok": true,
+      "evidence": "code=PRJ-TEST-B2"
+    },
+    {
+      "name": "B-00 ایجاد کاربران آزمون با رمز موقت",
+      "ok": true,
+      "evidence": "eng=201 aud=201 ctr=201"
+    },
+    {
+      "name": "B-00 ورود مهندس",
+      "ok": true,
+      "evidence": "login=200 me=200"
+    },
+    {
+      "name": "B-01 ایجاد سند متنی",
+      "ok": true,
+      "evidence": "status=201"
+    },
+    {
+      "name": "B-02 آپلود → صف پردازش ایجاد شد",
+      "ok": true,
+      "evidence": "queued=THUMBNAIL,TEXT_EXTRACT"
+    },
+    {
+      "name": "B-03 Worker زنجیره را کامل پردازش کرد (TEXT_EXTRACT→TITLE_BLOCK)",
+      "ok": true,
+      "evidence": "THUMBNAIL:DONE,TEXT_EXTRACT:DONE,TITLE_BLOCK:DONE"
+    },
+    {
+      "name": "B-04 شناسه هم‌بستگی زنجیره یکسان",
+      "ok": true,
+      "evidence": "correlations=1"
+    },
+    {
+      "name": "B-05 وضعیت پردازش سند: PROCESSED",
+      "ok": true,
+      "evidence": "processingStatus=PROCESSED"
+    },
+    {
+      "name": "B-06 وضعیت استخراج: EXTRACTED_UNREVIEWED (استخراج‌شده، تأییدنشده)",
+      "ok": true,
+      "evidence": "extractionStatus=EXTRACTED_UNREVIEWED"
+    },
+    {
+      "name": "B-07 API صفحات: شمارش و منبع لایهٔ متن",
+      "ok": true,
+      "evidence": "pageCount=1 source=TEXT_LAYER"
+    },
+    {
+      "name": "B-08 مشتق تصویر صفحه و بندانگشتی ثبت شده",
+      "ok": true,
+      "evidence": "pageImages=[1]"
+    },
+    {
+      "name": "B-09 استخراج شماره سند با تطابق ثبت (اطمینان بالا)",
+      "ok": true,
+      "evidence": "DOC_NUMBER=7741-ISO-0042 conf=0.92"
+    },
+    {
+      "name": "B-10 استخراج شماره خط",
+      "ok": true,
+      "evidence": "LINE=4-P-7741-C1A"
+    },
+    {
+      "name": "B-11 استخراج REV/شیت",
+      "ok": true,
+      "evidence": "REV=4 SHEET=2"
+    },
+    {
+      "name": "B-12 استخراج Tag تجهیز",
+      "ok": true,
+      "evidence": "TAG=EA-4402B"
+    },
+    {
+      "name": "B-13 مختصات bbox نرمال برای هایلایت",
+      "ok": true,
+      "evidence": "bbox=[0.13,0.21,0.1,0.02]"
+    },
+    {
+      "name": "B-14 وضعیت فیلدها: UNREVIEWED تا تأیید کارشناس",
+      "ok": true,
+      "evidence": "status=UNREVIEWED"
+    },
+    {
+      "name": "B-15 جست‌وجوی درون‌مدرک: نتیجه با صفحه و rects",
+      "ok": true,
+      "evidence": "total=1 page=1"
+    },
+    {
+      "name": "B-16 جست‌وجوی فارسی نرمال‌شده در متن صفحه",
+      "ok": true,
+      "evidence": "total=1"
+    },
+    {
+      "name": "B-17 جست‌وجوی سراسری scope=content با لینک صفحه",
+      "ok": true,
+      "evidence": "items=1"
+    },
+    {
+      "name": "B-18 سرو تصویر صفحه (PNG) با کنترل دسترسی",
+      "ok": true,
+      "evidence": "status=200 bytes=52665"
+    },
+    {
+      "name": "B-19 سرو بندانگشتی",
+      "ok": true,
+      "evidence": "status=200"
+    },
+    {
+      "name": "B-20 تأیید مقدار استخراجی",
+      "ok": true,
+      "evidence": "status=CONFIRMED"
+    },
+    {
+      "name": "B-21 آپلود اسکن → صف OCR",
+      "ok": true,
+      "evidence": "status=201"
+    },
+    {
+      "name": "B-22 OCR کامل شد",
+      "ok": true,
+      "evidence": "THUMBNAIL:DONE,TEXT_EXTRACT:DONE,OCR:DONE,TITLE_BLOCK:DONE"
+    },
+    {
+      "name": "B-23 متن صفحه از منبع OCR با اطمینان",
+      "ok": true,
+      "evidence": "source=OCR conf=0.95"
+    },
+    {
+      "name": "B-24 جست‌وجو در متن OCR یافت شد",
+      "ok": true,
+      "evidence": "total=1"
+    },
+    {
+      "name": "B-25 اسکن بی‌متن → کار بازبینی LOW_QUALITY",
+      "ok": true,
+      "evidence": "reason=LOW_QUALITY detail=در صفحه‌های 1 متن خوانا استخراج نشد (اسکن کم‌کیفیت یا دست‌نو"
+    },
+    {
+      "name": "B-26 برداشت کار بازبینی",
+      "ok": true,
+      "evidence": "status=IN_PROGRESS"
+    },
+    {
+      "name": "B-27 حل کار بازبینی با یادداشت",
+      "ok": true,
+      "evidence": "status=RESOLVED"
+    },
+    {
+      "name": "B-28 اصلاح انسانی مقدار REV به ۹",
+      "ok": true,
+      "evidence": "status=EDITED"
+    },
+    {
+      "name": "B-29 درخواست بازپردازش",
+      "ok": true,
+      "evidence": "status=200"
+    },
+    {
+      "name": "B-30 مقدار اصلاح‌شدهٔ انسانی پس از بازپردازش دست‌نخورده ماند",
+      "ok": true,
+      "evidence": "REV=9"
+    },
+    {
+      "name": "B-31 نتیجهٔ جدید به‌عنوان پیشنهاد ثبت شد (نه جایگزین)",
+      "ok": true,
+      "evidence": "suggestion=4"
+    },
+    {
+      "name": "B-32 پس از تأیید همه: وضعیت استخراج VERIFIED",
+      "ok": true,
+      "evidence": "extractionStatus=VERIFIED"
+    },
+    {
+      "name": "B-33 شکست تکرارشونده → Dead-letter با ثبت خطا",
+      "ok": true,
+      "evidence": "attempts=3 err=Invalid PDF structure."
+    },
+    {
+      "name": "B-34 وضعیت سند پس از Dead-letter: FAILED (صادقانه)",
+      "ok": true,
+      "evidence": "processingStatus=FAILED"
+    },
+    {
+      "name": "B-35 شکست پردازش → کار بازبینی خودکار",
+      "ok": true,
+      "evidence": "items=5"
+    },
+    {
+      "name": "B-36 بازپردازش کار Dead-letter از مانیتور",
+      "ok": true,
+      "evidence": "status=200"
+    },
+    {
+      "name": "B-37 پس از Retry و بازیابی فایل: پردازش موفق",
+      "ok": true,
+      "evidence": "processingStatus=PROCESSED"
+    },
+    {
+      "name": "B-38 ایجاد هایلایت روی صفحه",
+      "ok": true,
+      "evidence": "status=201"
+    },
+    {
+      "name": "B-39 فهرست حاشیه‌نویسی برای کاربر مجاز",
+      "ok": true,
+      "evidence": "items=1"
+    },
+    {
+      "name": "B-40 حل حاشیه‌نویسی توسط نویسنده",
+      "ok": true,
+      "evidence": "status=200"
+    },
+    {
+      "name": "B-41 حذف حاشیه‌نویسی توسط غیرنویسنده/غیرمدیر: ممنوع",
+      "ok": true,
+      "evidence": "status=403"
+    },
+    {
+      "name": "B-42 انزوا: کاربر خارج از پروژه به صفحات/متن/استخراج/تصویر دسترسی ندارد",
+      "ok": true,
+      "evidence": "pages=404 cs=404 ext=404 img=404"
+    },
+    {
+      "name": "B-43 ممیز (بدون doc:content) → 403",
+      "ok": true,
+      "evidence": "status=403"
+    },
+    {
+      "name": "B-44 پیمانکار عضو: مشاهده استخراج ممکن",
+      "ok": true,
+      "evidence": "status=200"
+    },
+    {
+      "name": "B-45 پیمانکار: تأیید مقدار استخراجی ممنوع (doc:review ندارد)",
+      "ok": true,
+      "evidence": "status=403"
+    },
+    {
+      "name": "B-46 مانیتور پردازش فقط برای مدیر پردازش",
+      "ok": true,
+      "evidence": "status=403"
+    },
+    {
+      "name": "B-47 DOCX: بدون صف پردازش (قابل مدیریت به‌عنوان فایل)",
+      "ok": true,
+      "evidence": "processable=false queued=0"
+    },
+    {
+      "name": "B-48 وضعیت پردازش DOCX همان UPLOADED می‌ماند",
+      "ok": true,
+      "evidence": "processingStatus=UPLOADED"
+    },
+    {
+      "name": "B-49 فایل پردازش‌نشده همچنان قابل دریافت است",
+      "ok": true,
+      "evidence": "status=200"
+    },
+    {
+      "name": "B-50 وضعیت صادقانه: Worker فعال",
+      "ok": true,
+      "evidence": "note=فعال — Worker vB-1.0.0 · صف: 0 در انتظار، 0 در اجرا، 1 مرده"
+    },
+    {
+      "name": "B-51 وضعیت صادقانه: OCR فعال با Worker و داده زبان",
+      "ok": true,
+      "evidence": "note=فعال — tesseract tesseract 5.5.0 · langs fas+eng · تا تأیید "
+    },
+    {
+      "name": "B-52 وضعیت صادقانه: صف بازبینی و لینک صفحه فعال",
+      "ok": true,
+      "evidence": "rq=true pl=true"
+    },
+    {
+      "name": "B-53 مانیتور: فهرست کارها با وضعیت Worker",
+      "ok": true,
+      "evidence": "jobs=50 alive=true"
+    }
+  ]
+}
