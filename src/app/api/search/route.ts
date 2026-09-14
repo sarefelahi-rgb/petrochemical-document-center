@@ -3,7 +3,8 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { requireUser, buildAccessContext, jsonOk } from '@/lib/guard';
-import { normalizeCode, normalizeFa, candidateCodes } from '@/lib/normalize';
+import { allowedCategoriesFor } from '@/lib/permissions';
+import { normalizeCode, normalizeFa, candidateCodes, digitVariants } from '@/lib/normalize';
 import { snippetAround } from '@/lib/contentSearch';
 
 export async function GET(req: NextRequest) {
@@ -15,9 +16,7 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(30, parseInt(req.nextUrl.searchParams.get('limit') || '12', 10) || 12);
   if (!q || ctx.projectIds.size === 0) return jsonOk({ items: [], semantic: false });
 
-  const CLEARANCE_ORDER: Record<string, number> = { PUBLIC: 0, INTERNAL: 1, CONFIDENTIAL: 2, RESTRICTED: 3 };
-  const userLevel = CLEARANCE_ORDER[ctx.clearance] ?? 1;
-  const allowedConf = Object.entries(CLEARANCE_ORDER).filter(([, v]) => v <= userLevel).map(([k]) => k);
+  const allowedConf = allowedCategoriesFor(ctx);
   const docWhere = {
     organizationId: ctx.organizationId,
     projectId: { in: Array.from(ctx.projectIds) },
@@ -90,9 +89,11 @@ export async function GET(req: NextRequest) {
     take: limit,
   });
 
-  // ۲) جست‌وجوی واژگانی عنوان (نرمال‌شده)
-  const byTitle = faQ.length >= 2 ? await db.document.findMany({
-    where: { ...docWhere, OR: [{ title: { contains: faQ } }, { title: { contains: q } }] },
+  // ۲) جست‌وجوی واژگانی عنوان (نرمال‌شده) — ارقام فارسی/لاتین معادل‌اند و بزرگ/کوچکی تفکیک نمی‌شود
+  // عنوان در پایگاه‌داده متن خام است؛ برای هر عبارت هر دو فرم ارقام جست‌وجو می‌شود
+  const titleVariants = faQ.length >= 2 ? Array.from(new Set(digitVariants(faQ).flatMap((v) => [v, v.toLowerCase()]))).slice(0, 4) : [];
+  const byTitle = titleVariants.length ? await db.document.findMany({
+    where: { ...docWhere, OR: titleVariants.map((v) => ({ title: { contains: v } })) },
     include: { project: { select: { code: true } }, revisions: { orderBy: { createdAt: 'desc' }, take: 1, select: { revisionCode: true, status: true } } },
     take: limit,
     orderBy: { updatedAt: 'desc' },

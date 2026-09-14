@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Home, FolderOpen, Upload, Bot, ClipboardList, BarChart3, Settings, LogOut, Moon, Sun, KeyRound, ScanSearch, FolderSearch, FileStack } from 'lucide-react';
+import { Home, FolderOpen, Upload, Bot, ClipboardList, BarChart3, Settings, LogOut, Moon, Sun, KeyRound, ScanSearch, FolderSearch, FileStack, Inbox } from 'lucide-react';
 import { api, ROLE_LABELS } from './api';
 import { HomeView } from './home-view';
 import { DocumentCenter } from './document-center';
 import { DocumentDetail } from './document-detail';
 import { UploadView } from './upload-view';
+import { IntakeView } from './intake-view';
 import { CartableView } from './cartable-view';
 import { ReviewQueueView } from './review-queue-view';
 import { ReportsView } from './reports-view';
@@ -29,6 +30,7 @@ const NAV = [
   { key: 'assistant', label: 'دستیار هوشمند', icon: Bot },
   { key: 'home', label: 'خانه', icon: Home },
   { key: 'documents', label: 'مرکز اسناد', icon: FolderOpen },
+  { key: 'intake', label: 'پذیرش اسناد', icon: Inbox },
   { key: 'dossier', label: 'پروندهٔ تجهیز', icon: FolderSearch },
   { key: 'doc-control', label: 'کنترل مدارک', icon: FileStack },
   { key: 'cartable', label: 'کارتابل', icon: ClipboardList },
@@ -161,6 +163,7 @@ export function AppShell({ me, onLogout, goHome }: { me: MeInfo; onLogout: () =>
           {view === 'documents' && <DocumentCenter go={go} refreshFavorites={refreshFavorites} favoriteIds={favorites} />}
           {view === 'document' && <DocumentDetail docId={param} go={go} openPageTarget={pageTarget} />}
           {view === 'upload' && <UploadView go={go} />}
+          {view === 'intake' && <IntakeView isAdmin={me.user.role === 'ADMIN'} />}
           {view === 'assistant' && <AssistantView go={go} initialDocId={param} />}
           {view === 'dossier' && <DossierView initialRef={param} go={go} />}
           {view === 'cartable' && <CartableView go={go} />}

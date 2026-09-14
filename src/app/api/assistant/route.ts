@@ -11,8 +11,10 @@
 // مقاوم به تزریق دستور از متن اسناد.
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
+import type { Prisma } from '@prisma/client';
 import { requireUser, buildAccessContext, jsonOk, jsonError } from '@/lib/guard';
-import { normalizeFa, candidateCodes } from '@/lib/normalize';
+import { allowedCategoriesFor } from '@/lib/permissions';
+import { normalizeFa, candidateCodes, digitVariants } from '@/lib/normalize';
 import { snippetAround } from '@/lib/contentSearch';
 import { audit } from '@/lib/audit';
 import { chatComplete, webSearch, visionRead, gatewayCircuitOpen } from '@/lib/modelGateway';
@@ -25,6 +27,10 @@ interface Citation {
   revision: string | null; revStatus: string | null; page?: number | null; snippet?: string | null;
   source?: 'internal' | 'web' | 'vision'; url?: string;
 }
+type DocSelect = { select: { id: true, docNumber: true, title: true, project: { select: { code: true } } } };
+type ExtractionHit = Prisma.DocExtractionGetPayload<{ include: { document: DocSelect } }>;
+type MtoHit = Prisma.MtoRowGetPayload<{ include: { document: DocSelect } }>;
+
 interface Evidence extends Citation { key: string }
 
 const CLEARANCE_ORDER: Record<string, number> = { PUBLIC: 0, INTERNAL: 1, CONFIDENTIAL: 2, RESTRICTED: 3 };
@@ -77,11 +83,12 @@ export async function POST(req: NextRequest) {
   const q = (body?.question || '').trim();
   const conversationId: string | undefined = body?.conversationId || undefined;
   const docId: string | undefined = body?.docId || undefined;
+  const assistantFileId: string | undefined = body?.assistantFileId || undefined;
   const allowWeb: boolean = body?.web === true;
   const visionPage: number | undefined = Number.isInteger(body?.visionPage) && body.visionPage >= 1 ? Number(body.visionPage) : undefined;
   if (!q) return jsonError('پرسش را بنویسید.');
   if (q.length > 2000) return jsonError('پرسش بیش از حد بلند است.');
-  if (ctx.projectIds.size === 0) {
+  if (ctx.projectIds.size === 0 && !assistantFileId) {
     return jsonOk({
       answer: 'در حال حاضر به هیچ پروژه‌ای دسترسی ندارید. با مدیر سامانه تماس بگیرید.',
       mode: 'no-access', citations: [], conversationId: null,
@@ -109,9 +116,8 @@ export async function POST(req: NextRequest) {
     .reverse()
     .map((m) => ({ role: m.role === 'USER' ? 'user' : 'assistant', content: m.content.slice(0, 1200) }));
 
-  // --- گارد دسترسی (منع پیش‌فرض) ---
-  const userLevel = CLEARANCE_ORDER[ctx.clearance] ?? 1;
-  const allowedConf = Object.entries(CLEARANCE_ORDER).filter(([, v]) => v <= userLevel).map(([k]) => k);
+  // --- گارد دسترسی (منع پیش‌فرض) — دسته‌بندی‌های محرمانگی چندگزینه‌ای/«همه» پشتیبانی می‌شود ---
+  const allowedConf = allowedCategoriesFor(ctx);
   const baseDocWhere = {
     organizationId: ctx.organizationId,
     projectId: { in: Array.from(ctx.projectIds) },
@@ -147,6 +153,23 @@ export async function POST(req: NextRequest) {
     unit: { code: string; name: string } | null;
   } | null = null;
   let scopeNote = '';
+
+  // --- شاهد فایل بارگذاری‌شده در دستیار (پیش از بازیابی عمومی) ---
+  if (assistantFileId) {
+    const af = await db.assistantFile.findFirst({ where: { id: assistantFileId, userId: auth.user.id } });
+    if (!af) return jsonError('فایل بارگذاری‌شده یافت نشد.', 404, 'NOT_FOUND');
+    if (af.conversationId && af.conversationId !== conv?.id) return jsonError('این فایل به گفت‌وگوی دیگری تعلق دارد.', 400, 'INVALID');
+    if (conv && !af.conversationId) {
+      await db.assistantFile.update({ where: { id: af.id }, data: { conversationId: conv.id } });
+    }
+    const srcLabel = af.textSource === 'OCR' ? 'OCR' : af.textSource === 'TEXT_LAYER' ? 'لایهٔ متنی PDF' : af.textSource === 'OFFICE' ? 'سند آفیس' : 'متن فایل';
+    pushCitation(
+      { documentId: '', docNumber: '', title: `فایل بارگذاری‌شده: ${af.originalName}`, project: '', revision: null, revStatus: null, source: 'internal' },
+      af.pageCount || null,
+      `فایل بارگذاری‌شدهٔ کاربر «${af.originalName}» (${srcLabel}${af.pageCount ? `، ${af.pageCount} صفحه` : ''}):
+${(af.textContent || '').slice(0, 12000)}`,
+    );
+  }
 
   // --- حالت محدود به سند: کل اطلاعات سند مجاز خوانده می‌شود ---
   if (docId) {
@@ -286,7 +309,7 @@ export async function POST(req: NextRequest) {
         ? db.document.findMany({ where: { ...baseDocWhere, OR: codes.map((c) => ({ docNumber: { contains: c } })) }, include: { project: { select: { code: true } }, revisions: { orderBy: { createdAt: 'desc' }, take: 1, select: { revisionCode: true, status: true } } }, take: 6 })
         : Promise.resolve([]),
       faQ.length >= 2
-        ? db.document.findMany({ where: { ...baseDocWhere, OR: [{ title: { contains: faQ } }, { title: { contains: q } }] }, include: { project: { select: { code: true } }, revisions: { orderBy: { createdAt: 'desc' }, take: 1, select: { revisionCode: true, status: true } } }, take: 6 })
+        ? db.document.findMany({ where: { ...baseDocWhere, OR: Array.from(new Set(digitVariants(faQ).flatMap((v) => [v, v.toLowerCase()]))).slice(0, 4).map((v) => ({ title: { contains: v } })) }, include: { project: { select: { code: true } }, revisions: { orderBy: { createdAt: 'desc' }, take: 1, select: { revisionCode: true, status: true } } }, take: 6 })
         : Promise.resolve([]),
       codes.length
         ? db.docLink.findMany({
@@ -331,7 +354,7 @@ export async function POST(req: NextRequest) {
             take: 12,
             orderBy: { confidence: 'desc' },
           })
-        : Promise.resolve([]),
+        : Promise.resolve([] as ExtractionHit[]),
       // ردیف‌های MTO مطابق پرسش (متریال/کلاس/شرح)
       [...codes, ...qTokens].length
         ? db.mtoRow.findMany({
@@ -344,20 +367,21 @@ export async function POST(req: NextRequest) {
             take: 30,
             orderBy: { createdAt: 'desc' },
           })
-        : Promise.resolve([]),
+        : Promise.resolve([] as MtoHit[]),
     ]);
 
     // ۱) صفحات با رتبه‌بندی ارتباطی (نه تازگی): امتیاز = تعداد تطبیق توکن‌ها + جایزهٔ کد + جایزهٔ عبارت کامل
+    // متن همیشه از textRaw با نرمال‌ساز جاری نرمال می‌شود (بزرگ/کوچکی و ارقام یکدست)
     const phraseForRank = faQ.length >= 12 ? faQ : '';
     const rankedPages = pageHits
       .map((pt) => {
-        const norm = pt.textNormalized || normalizeFa(pt.textRaw || '');
+        const norm = normalizeFa(pt.textRaw || pt.textNormalized || '');
         let score = 0, bestTok = '', bestCnt = 0;
         for (const t of qTokens) {
           const cnt = countOccurrences(norm, t);
           if (cnt > 0) { score += cnt; if (cnt > bestCnt) { bestCnt = cnt; bestTok = t; } }
         }
-        for (const c of codes) if (norm.includes(c)) score += 4;
+        for (const c of codes) if (norm.includes(c.toLowerCase())) score += 4;
         const phraseHit = phraseForRank ? norm.includes(phraseForRank) : false;
         if (phraseHit) score += 8;
         return { pt, score, needle: phraseHit ? phraseForRank : bestTok };
@@ -564,6 +588,7 @@ export async function POST(req: NextRequest) {
       '۷) در اختلاف نسخه‌ها، هر دو منبع و وضعیتشان را نشان بده. از Markdown برای ساختار و جدول استفاده کن.',
       '۸) برای پرسش شمارش، جمع یا مقایسهٔ کمّی، فقط از بلوک «آمار دقیق پایگاه‌داده» استفاده کن و اعداد را عیناً بیاور؛ از شمردن حافظه‌ای شواهد خودداری کن.',
       '۹) هیچ عدد، شماره سند، کد یا مقدار فنی از حافظهٔ خودت نساز؛ اگر در شواهد یا آمار نیست، صریح بنویس «در اسناد مجاز موجود یافت نشد».',
+      '۱۰) فایل‌های بارگذاری‌شدهٔ کاربر با برچسب «فایل بارگذاری‌شده» در شواهد هستند؛ دربارهٔ محتوای آن‌ها مثل یک سند با استناد [E#] رفتار کن.',
     ].join('\n');
 
     const scopeLine = scopeNote ? `محدوده: ${scopeNote}\n` : '';
@@ -592,16 +617,20 @@ export async function POST(req: NextRequest) {
     ].join(' ‖ '));
     const hardClaims = (s: string): string[] => {
       // ارجاع‌های شواهد (براکتی یا لخت مثل E10) ادعا نیستند — قبل از استخراج حذف می‌شوند
-      const stripped = s.replace(/\[(E|W)\d+\]/gi, ' ').replace(/\b(?:E|W)\d{1,2}\b/g, ' ');
+      const stripped = s.replace(/\[(E|W)\d+\]/gi, ' ').replace(/\b(?:E|W)\d{1,2}\b/gi, ' ');
       const normAns = normalizeFa(stripped);
       const out = new Set<string>();
-      for (const m of normAns.matchAll(/[A-Z0-9]*\d[A-Z0-9\-_.]*/g)) {
+      // نرمال‌ساز متن را lowercase می‌کند — الگوی ادعا هم lowercase است
+      for (const m of normAns.matchAll(/[a-z0-9]*\d[a-z0-9\-_.]*/g)) {
         const t = m[0].replace(/^[.\-_]+|[.\-_]+$/g, '');
         if (t.length >= 3 && t.replace(/\D/g, '').length >= 2) out.add(t);
       }
       for (const c of realCodes(stripped)) out.add(c.replace(/[.\-_]+$/, ''));
-      // تطبیق دوگانه: فرم خام و فرم نرمال‌شده (خط‌تیره/نقطه ↔ فاصله) هر دو پذیرفته می‌شوند
-      return Array.from(out).filter((t) => !verificationCorpus.includes(t) && !verificationCorpus.includes(normalizeFa(t)));
+      // تطبیق سه‌گانه: فرم نرمال (lowercase)، فرم خام و فرم uppercase کد — همه پذیرفته می‌شوند
+      return Array.from(out).filter((t) =>
+        !verificationCorpus.includes(normalizeFa(t))
+        && !verificationCorpus.includes(t.toLowerCase())
+        && !verificationCorpus.includes(t));
     };
 
     if (result.ok) {

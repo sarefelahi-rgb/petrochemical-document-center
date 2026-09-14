@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   SendHorizonal, MessageSquarePlus, MoreVertical, Pencil, Trash2, Search,
-  Bot, PanelRightClose, PanelRightOpen, FileText, X, Sparkles, Globe, ScanText, Lock,
+  Bot, PanelRightClose, PanelRightOpen, FileText, X, Sparkles, Globe, ScanText, Lock, Paperclip, FileUp,
 } from 'lucide-react';
 import { api, fmtJalali } from './api';
 
@@ -19,7 +19,7 @@ interface Citation {
   revision: string | null; revStatus: string | null; page?: number | null; snippet?: string | null;
   source?: 'internal' | 'web' | 'vision'; url?: string;
 }
-interface Turn { role: 'USER' | 'ASSISTANT'; content: string; citations?: Citation[]; mode?: string }
+interface Turn { role: 'USER' | 'ASSISTANT'; content: string; citations?: Citation[]; mode?: string; fileChip?: { name: string; meta: string } }
 interface ConvItem { id: string; title: string; createdAt: string; messageCount: number }
 
 const EXAMPLES = [
@@ -45,6 +45,10 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
   const [docScope, setDocScope] = useState<{ id: string; docNumber: string; title: string } | null>(null);
   const [allowWeb, setAllowWeb] = useState(false); // جست‌وجوی وب اختیاری — فقط متن پرسش ارسال می‌شود
   const [visionPage, setVisionPage] = useState(''); // خواندن تصویری صفحه (فقط در محدودهٔ سند)
+  // فایل بارگذاری‌شده در گفت‌وگو — دستیار متن استخراج‌شدهٔ آن را به‌عنوان شاهد می‌خواند
+  const [attachedFile, setAttachedFile] = useState<{ id: string; name: string; meta: string } | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
@@ -91,8 +95,37 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
   function newChat() {
     if (busy) return;
     setActiveId(null); setTurns([]); setError(''); setSidebarOpen(false);
-    setDocScope(null); setVisionPage('');
+    setDocScope(null); setVisionPage(''); setAttachedFile(null);
     setQ(''); if (taRef.current) taRef.current.style.height = 'auto';
+  }
+
+  // بارگذاری فایل در دستیار: استخراج اطلاعات + خلاصهٔ مدل + ثبت شاهد برای پرسش‌های بعدی
+  async function uploadFile(f: File) {
+    if (busy || uploadingFile) return;
+    setUploadingFile(true); setError('');
+    try {
+      const fd = new FormData();
+      fd.append('file', f);
+      if (activeId) fd.append('conversationId', activeId);
+      const r = await api<{
+        conversationId: string; assistantFileId: string; answer: string; citations: Citation[];
+        extraction: { fileName: string; label: string; size: number; source: string | null; pageCount: number | null; textChars: number; note: string | null; ok: boolean };
+      }>('/api/assistant/upload', { method: 'POST', body: fd });
+      setActiveId(r.conversationId);
+      setAttachedFile({
+        id: r.assistantFileId,
+        name: r.extraction.fileName,
+        meta: `${r.extraction.label}${r.extraction.source ? ` · ${r.extraction.source === 'OCR' ? 'OCR' : r.extraction.source === 'TEXT_LAYER' ? 'لایهٔ متنی' : r.extraction.source === 'OFFICE' ? 'آفیس' : 'متن'}` : ''}${r.extraction.pageCount ? ` · ${r.extraction.pageCount} صفحه` : ''} · ${r.extraction.textChars.toLocaleString('fa-IR')} نویسه`,
+      });
+      setTurns((prev) => [
+        ...prev,
+        { role: 'USER', content: `بارگذاری فایل «${r.extraction.fileName}» — اطلاعات آن را استخراج کن.`, fileChip: { name: r.extraction.fileName, meta: r.extraction.label } },
+        { role: 'ASSISTANT', content: r.answer, citations: r.citations },
+      ]);
+      loadConvs(search);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally { setUploadingFile(false); }
   }
 
   async function ask(question: string) {
@@ -106,6 +139,7 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
         method: 'POST', json: {
           question: text, conversationId: activeId,
           docId: docScope?.id || undefined,
+          assistantFileId: attachedFile?.id || undefined,
           web: allowWeb,
           visionPage: docScope && visionPage ? parseInt(visionPage, 10) || undefined : undefined,
         },
@@ -286,6 +320,13 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
             t.role === 'USER' ? (
               <div key={i} className="flex justify-start" data-testid="msg-user">
                 <div className="rounded-2xl rounded-tr-md bg-teal-700 text-white px-4 py-3 max-w-[85%] text-sm leading-6 whitespace-pre-wrap">
+                  {t.fileChip && (
+                    <span className="flex items-center gap-2 rounded-lg bg-white/15 px-2.5 py-1.5 mb-2 max-w-xs" dir="ltr">
+                      <FileUp className="h-4 w-4 shrink-0" />
+                      <span className="truncate text-xs font-medium" title={t.fileChip.name}>{t.fileChip.name}</span>
+                      <span className="shrink-0 rounded bg-white/20 px-1.5 py-0.5 text-[10px]">{t.fileChip.meta}</span>
+                    </span>
+                  )}
                   {t.content}
                 </div>
               </div>
@@ -366,6 +407,21 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
               </div>
             </div>
           )}
+          {uploadingFile && (
+            <div className="flex gap-2.5" data-testid="assistant-uploading">
+              <div className="shrink-0 w-8 h-8 rounded-full bg-teal-700/10 flex items-center justify-center">
+                <Bot className="h-[18px] w-[18px] text-teal-700" />
+              </div>
+              <div className="rounded-2xl rounded-tl-md border bg-background px-4 py-3">
+                <span className="inline-flex gap-1 items-center" aria-label="در حال استخراج فایل">
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-700 animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-700 animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-700 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <span className="text-xs text-muted-foreground mr-2">در حال استخراج اطلاعات فایل (متن/OCR) و تحلیل آن…</span>
+                </span>
+              </div>
+            </div>
+          )}
           <div ref={bottomRef} />
         </div>
 
@@ -378,8 +434,28 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
 
         {/* ورودی پیام */}
         <div className="pt-3">
-          {/* ابزارهای پرسش: جست‌وجوی وب + خواندن تصویری صفحه */}
+          {/* ابزارهای پرسش: بارگذاری فایل + جست‌وجوی وب + خواندن تصویری صفحه */}
           <div className="flex items-center gap-3 flex-wrap pb-2 px-1 text-xs">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingFile || busy}
+              className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 hover:bg-accent transition-colors disabled:opacity-50"
+              title="بارگذاری فایل (PDF، تصویر، Word، Excel، متن) — دستیار اطلاعات آن را استخراج و تحلیل می‌کند"
+              aria-label="بارگذاری فایل در گفت‌وگو"
+            >
+              <Paperclip className="h-3.5 w-3.5 text-teal-700" /> بارگذاری فایل
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,.docx,.xlsx,.csv,.txt"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) uploadFile(f);
+                e.target.value = '';
+              }}
+            />
             <label className="inline-flex items-center gap-1.5 cursor-pointer select-none" title="فقط متن پرسش شما به موتور جست‌وجو ارسال می‌شود؛ محتوای اسناد هرگز بیرون نمی‌رود">
               <input type="checkbox" checked={allowWeb} onChange={(e) => setAllowWeb(e.target.checked)} className="accent-teal-700" />
               <Globe className="h-3.5 w-3.5 text-sky-700" /> جست‌وجوی وب (اختیاری)
@@ -398,6 +474,19 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
               </label>
             )}
           </div>
+          {/* فایل پیوست گفت‌وگو */}
+          {attachedFile && (
+            <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 mb-2 max-w-md" data-testid="assistant-attached-file">
+              <FileText className="h-4 w-4 shrink-0 text-teal-700" />
+              <div className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-medium" dir="ltr" title={attachedFile.name}>{attachedFile.name}</span>
+                <span className="block text-[10px] text-muted-foreground" dir="ltr">{attachedFile.meta}</span>
+              </div>
+              <button onClick={() => setAttachedFile(null)} aria-label="برداشتن فایل پیوست" className="p-1 rounded hover:bg-accent">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
           <div className="flex items-end gap-2 rounded-2xl border bg-background p-2 shadow-sm focus-within:border-teal-700/50">
             <textarea
               ref={taRef}

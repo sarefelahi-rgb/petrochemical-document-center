@@ -14,7 +14,7 @@ import { UserPlus, FolderPlus, BookOpen, Settings2, ScrollText, Database, Copy, 
 import { toast } from '@/hooks/use-toast';
 import { api, fmtJalali, ROLE_LABELS, CONF_LABELS } from './api';
 
-interface AdminUser { id: string; username: string; fullName: string; role: string; clearance: string; isActive: boolean; mfaEnabled: boolean; lastLoginAt: string | null; isSample: boolean; lockedUntil: string | null; projectMemberships: Array<{ projectId: string; project: { code: string; name: string } }> }
+interface AdminUser { id: string; username: string; fullName: string; role: string; clearance: string; categoryAccess: string | null; isActive: boolean; mfaEnabled: boolean; lastLoginAt: string | null; isSample: boolean; lockedUntil: string | null; projectMemberships: Array<{ projectId: string; project: { code: string; name: string } }> }
 interface Proj { id: string; code: string; name: string; isSample: boolean; areas: Array<{ id: string; code: string; name: string; units: Array<{ id: string; code: string; name: string }> }>; _count: { documents: number; memberships: number } }
 interface Vocab { id: string; domain: string; code: string; label: string }
 interface AuditRow { id: string; action: string; actorName: string | null; detail: string | null; ip: string | null; at: string }
@@ -47,10 +47,51 @@ export function AdminView({ orgName }: { orgName: string }) {
   );
 }
 
+// انتخاب دسته‌بندی‌های محرمانگی — چندگزینه‌ای + گزینهٔ «همه»
+// مقدار: null = سطح کلاسیک | "ALL" = همه | JSON array مثل ["PUBLIC","CONFIDENTIAL"]
+function CategoryPicker({ value, onChange, idPrefix }: { value: string | null; onChange: (v: string | null) => void; idPrefix: string }) {
+  const isAll = value === 'ALL';
+  let cats: string[] = [];
+  if (value && value.startsWith('[')) { try { cats = JSON.parse(value) as string[]; } catch { cats = []; } }
+  const allKeys = Object.keys(CONF_LABELS);
+  const toggle = (k: string) => {
+    const next = cats.includes(k) ? cats.filter((c) => c !== k) : [...cats, k];
+    // دستهٔ خالی مجاز نیست — حداقل PUBLIC
+    onChange(next.filter((c) => c !== 'PUBLIC').length || next.includes('PUBLIC') ? JSON.stringify(allKeys.filter((kk) => (kk === 'PUBLIC' ? true : next.includes(kk)))) : null);
+  };
+  return (
+    <div className="flex flex-wrap gap-2" role="group" aria-label="دسته‌بندی‌های محرمانگی مجاز">
+      <label className="flex items-center gap-1.5 text-sm rounded-lg border px-2.5 py-1.5 cursor-pointer bg-teal-700/5 border-teal-700/30" title="دسترسی به همهٔ دسته‌بندی‌ها">
+        <input
+          type="checkbox"
+          id={`${idPrefix}-all`}
+          checked={isAll}
+          onChange={(e) => onChange(e.target.checked ? 'ALL' : JSON.stringify(['PUBLIC', 'INTERNAL']))}
+          className="accent-teal-700"
+        />
+        <span className="font-medium">همه</span>
+      </label>
+      {allKeys.map((k) => (
+        <label key={k} className={`flex items-center gap-1.5 text-sm rounded-lg border px-2.5 py-1.5 cursor-pointer ${isAll ? 'opacity-50' : ''}`}>
+          <input
+            type="checkbox"
+            id={`${idPrefix}-${k}`}
+            checked={isAll || cats.includes(k)}
+            disabled={isAll}
+            onChange={() => toggle(k)}
+            className="accent-teal-700"
+          />
+          {CONF_LABELS[k]}
+        </label>
+      ))}
+    </div>
+  );
+}
+
 function UsersTab() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [projects, setProjects] = useState<Proj[]>([]);
-  const [form, setForm] = useState({ username: '', fullName: '', role: 'ENGINEER', clearance: 'INTERNAL', projects: [] as string[] });
+  const [form, setForm] = useState({ username: '', fullName: '', role: 'ENGINEER', categoryAccess: JSON.stringify(['PUBLIC', 'INTERNAL']) as string | null, projects: [] as string[] });
   const [tempPw, setTempPw] = useState<{ username: string; password: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -67,9 +108,16 @@ function UsersTab() {
     }
     setBusy(true);
     try {
-      const r = await api<{ tempPassword: string }>('/api/admin/users', { method: 'POST', json: { ...form, projectIds: form.projects } });
+      const r = await api<{ tempPassword: string }>('/api/admin/users', {
+        method: 'POST',
+        json: {
+          username: form.username, fullName: form.fullName, role: form.role,
+          categoryAccess: form.categoryAccess === 'ALL' ? 'ALL' : form.categoryAccess ? JSON.parse(form.categoryAccess) : null,
+          projectIds: form.projects,
+        },
+      });
       setTempPw({ username: form.username, password: r.tempPassword });
-      setForm({ username: '', fullName: '', role: 'ENGINEER', clearance: 'INTERNAL', projects: [] });
+      setForm({ username: '', fullName: '', role: 'ENGINEER', categoryAccess: JSON.stringify(['PUBLIC', 'INTERNAL']), projects: [] });
       load();
     } catch (e) {
       toast({ title: 'ایجاد کاربر ناموفق', description: (e as Error).message, variant: 'destructive' });
@@ -95,14 +143,13 @@ function UsersTab() {
               <SelectContent>{Object.entries(ROLE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label>سطح محرمانگی</Label>
-            <Select value={form.clearance} onValueChange={(v) => setForm({ ...form, clearance: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{Object.entries(CONF_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
-            </Select>
+          <div className="md:col-span-5 space-y-1.5">
+            <Label>دسته‌بندی‌های محرمانگی مجاز (چندگزینه‌ای — یا گزینهٔ «همه»)</Label>
+            <CategoryPicker idPrefix="new-user" value={form.categoryAccess} onChange={(v) => setForm({ ...form, categoryAccess: v })} />
           </div>
-          <Button onClick={createUser} disabled={busy}>ایجاد کاربر</Button>
+          <div className="md:col-span-5 flex justify-end">
+            <Button onClick={createUser} disabled={busy}>ایجاد کاربر</Button>
+          </div>
           <div className="md:col-span-5">
             <Label className="mb-1.5 block">پروژه‌های مجاز (انزوای داده — منع پیش‌فرض)</Label>
             <div className="flex flex-wrap gap-3">
@@ -130,7 +177,7 @@ function UsersTab() {
               <div className="min-w-0">
                 <div className="text-sm font-medium">{u.fullName} <span dir="ltr" className="text-xs text-muted-foreground font-mono">({u.username})</span> {u.isSample && <span className="text-xs text-purple-700 dark:text-purple-300">(نمونه)</span>}</div>
                 <div className="text-xs text-muted-foreground mt-0.5">
-                  {ROLE_LABELS[u.role] || u.role} · {CONF_LABELS[u.clearance]} · MFA: {u.mfaEnabled ? 'فعال' : 'غیرفعال'} · آخرین ورود: {fmtJalali(u.lastLoginAt, true)}
+                  {ROLE_LABELS[u.role] || u.role} · دسته‌ها: {u.categoryAccess === 'ALL' ? 'همه' : u.categoryAccess && u.categoryAccess.startsWith('[') ? (JSON.parse(u.categoryAccess) as string[]).map((c) => CONF_LABELS[c] || c).join('، ') : CONF_LABELS[u.clearance] || u.clearance} · MFA: {u.mfaEnabled ? 'فعال' : 'غیرفعال'} · آخرین ورود: {fmtJalali(u.lastLoginAt, true)}
                 </div>
                 <div className="text-xs text-muted-foreground">پروژه‌ها: {u.projectMemberships.map((m) => m.project.code).join('، ') || '—'}</div>
               </div>
@@ -141,10 +188,11 @@ function UsersTab() {
                 <Button size="sm" variant="outline" onClick={() => patchUser(u.id, { isActive: !u.isActive })}>
                   {u.isActive ? 'غیرفعال' : 'فعال'}
                 </Button>
-                <Select onValueChange={(v) => patchUser(u.id, { clearance: v })} value={u.clearance}>
-                  <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>{Object.entries(CONF_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
-                </Select>
+                <CategoryPicker
+                  idPrefix={`cat-${u.id}`}
+                  value={u.categoryAccess}
+                  onChange={(v) => patchUser(u.id, { categoryAccess: v === 'ALL' ? 'ALL' : v ? JSON.parse(v) : null })}
+                />
               </div>
             </div>
           ))}

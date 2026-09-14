@@ -46,6 +46,7 @@ export interface SessionUser {
   fullName: string;
   role: string;
   clearance: string;
+  categoryAccess: string | null; // "ALL" | JSON array | null (legacy سطح)
   organizationId: string;
   mustChangePassword: boolean;
   mfaEnabled: boolean;
@@ -80,6 +81,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     fullName: session.user.fullName,
     role: session.user.role,
     clearance: session.user.clearance,
+    categoryAccess: session.user.categoryAccess ?? null,
     organizationId: session.user.organizationId,
     mustChangePassword: session.user.mustChangePassword,
     mfaEnabled: session.user.mfaEnabled,

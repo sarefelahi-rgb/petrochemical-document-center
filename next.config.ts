@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  // pdfjs-dist باید خارج از باندل سرور بارگذاری شود (fake worker از node_modules)
+  serverExternalPackages: ["pdfjs-dist"],
 };
 
 export default nextConfig;

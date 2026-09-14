@@ -36,6 +36,7 @@ export async function buildAccessContext(user: SessionUser): Promise<AccessConte
   return {
     role: user.role,
     clearance: user.clearance,
+    categoryAccess: user.categoryAccess ?? null,
     organizationId: user.organizationId,
     projectIds,
   };

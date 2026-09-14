@@ -20,6 +20,7 @@ model Organization {
   projects  Project[]
   documents Document[]
   auditEvents AuditEvent[]
+  intakeItems IntakeItem[]
 }
 
 model User {
@@ -35,6 +36,7 @@ model User {
   mustChangePassword Boolean   @default(false)
   mfaEnabled         Boolean   @default(false)
   mfaSecret          String? // encrypted-at-rest در استقرار تولید؛ اینجا secret manager خارج از کد
+  categoryAccess     String? // دسته‌بندی‌های محرمانگی مجاز چندگزینه‌ای: null=مبتنی بر سطح (legacy) | "ALL"=همه | JSON مثل ["PUBLIC","CONFIDENTIAL"]
   failedAttempts     Int       @default(0)
   lockedUntil        DateTime?
   lastLoginAt        DateTime?
@@ -51,6 +53,33 @@ model User {
   reviewTasks        ReviewTask[]       // بازبینی‌های محول‌شده
   annotations        Annotation[]       // حاشیه‌نویسی‌های کاربر
   docApprovals       DocApproval[]      @relation("DocApprovals") // تأییدهای محول‌شده
+  assistantFiles     AssistantFile[]    // فایل‌های بارگذاری‌شده در گفت‌وگوی دستیار
+  intakeUploads      IntakeItem[]       @relation("IntakeUploader") // اسناد ارسالی در پذیرش هوشمند
+}
+
+// شناسه عملیات آپلود — یکتا سمت کلاینت، مانع ثبت تکراری در retry
+model UploadOp {
+  opId      String   @id
+  fileId    String?
+  createdAt DateTime @default(now())
+}
+
+// فایل بارگذاری‌شده در گفت‌وگوی دستیار — متن استخراج‌شده برای پرسش‌های بعدی همین گفت‌وگو
+model AssistantFile {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  conversationId String?
+  originalName   String
+  mimeType       String
+  size           Int
+  sha256         String
+  storageKey     String
+  textContent    String
+  textSource     String? // TEXT_LAYER | OCR | FILE | OFFICE
+  pageCount      Int?
+  meta           String?
+  createdAt      DateTime @default(now())
 }
 
 model Session {
@@ -185,7 +214,39 @@ model Document {
   mtoRows        MtoRow[]         // ردیف‌های MTO این سند
   approvals      DocApproval[]    // گردش تأیید سند
   transmittalItems TransmittalItem[] // اقلام ترنسمیتال‌ها
+  intakeItems      IntakeItem[]      @relation("IntakeDocument") // اقلام پذیرش تبدیل‌شده به این سند
   @@unique([organizationId, projectId, docNumber])
+}
+
+// پذیرش هوشمند اسناد — آپلود ادمین/کاربر، استخراج و طبقه‌بندی خودکار با هوش مصنوعی، تأیید ادمین
+model IntakeItem {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  uploaderId     String?
+  uploader       User?    @relation("IntakeUploader", fields: [uploaderId], references: [id])
+  source         String   @default("USER") // ADMIN | USER
+  status         String   @default("PENDING_APPROVAL") // CLASSIFIED (پیش‌نویس ادمین) | PENDING_APPROVAL | APPROVED | REJECTED
+  originalName   String
+  mimeType       String
+  size           Int
+  sha256         String
+  storageKey     String
+  note           String? // یادداشت ارسال‌کننده
+  extractedText  String? // متن استخراج‌شده برای طبقه‌بندی و نمایش
+  textSource     String?
+  pageCount      Int?
+  aiJson         String? // پیشنهاد طبقه‌بندی مدل: {docNumber,title,projectCode,discipline,docType,unitCode,revision,confidentiality,tags,summary}
+  aiConfidence   Float?
+  aiNote         String?
+  reviewNote     String? // یادداشت ادمین در تأیید/رد
+  reviewedById   String?
+  reviewedAt     DateTime?
+  documentId     String?
+  document       Document? @relation("IntakeDocument", fields: [documentId], references: [id])
+  isSample       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Revision {

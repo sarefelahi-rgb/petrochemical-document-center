@@ -2,8 +2,8 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { requireUser, buildAccessContext, jsonOk, jsonError } from '@/lib/guard';
-import { can } from '@/lib/permissions';
-import { normalizeCode, normalizeFa, candidateCodes } from '@/lib/normalize';
+import { can, allowedCategoriesFor } from '@/lib/permissions';
+import { normalizeCode, normalizeFa, candidateCodes, digitVariants } from '@/lib/normalize';
 
 export async function GET(req: NextRequest) {
   const auth = await requireUser();
@@ -33,6 +33,8 @@ export async function GET(req: NextRequest) {
   const where: Record<string, unknown> = {
     organizationId: ctx.organizationId,
     projectId: projectFilter ? projectFilter : { in: allowed },
+    // دسته‌بندی‌های محرمانگی مجاز کاربر (چندگزینه‌ای/همه) — منع پیش‌فرض
+    confidentiality: { in: allowedCategoriesFor(ctx) },
   };
   if (unitId) where.unitId = unitId;
   if (discipline) where.discipline = discipline;
@@ -41,13 +43,14 @@ export async function GET(req: NextRequest) {
   if (confidentiality) where.confidentiality = confidentiality;
 
   // جست‌وجو: دقیق روی شماره (نرمال‌شده، توکن‌به‌توکن) یا واژگانی روی عنوان
+  // ارقام فارسی/لاتین معادل‌اند؛ بزرگ/کوچکی حروف لاتین تفکیک نمی‌شود
   if (q) {
     const codes = candidateCodes(q);
     const faQ = normalizeFa(q);
+    const titleVariants = Array.from(new Set(digitVariants(faQ).flatMap((v) => [v, v.toLowerCase()]))).slice(0, 4);
     where.OR = [
       ...codes.map((c) => ({ docNumber: { contains: c } })),
-      { title: { contains: faQ } },
-      { title: { contains: q } },
+      ...titleVariants.map((v) => ({ title: { contains: v } })),
     ];
   }
 

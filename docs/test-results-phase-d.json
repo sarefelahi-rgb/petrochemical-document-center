@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-13T10:37:04.536Z",
+  "generatedAt": "2026-09-14T11:12:11.333Z",
   "phase": "D",
   "total": 24,
   "passed": 24,
@@ -122,7 +122,7 @@
     {
       "name": "D-17 پشتیبان‌گیری هماهنگ با مانیفست و SHA-256",
       "ok": true,
-      "evidence": "db=c11bddc7b88e… originals=18"
+      "evidence": "db=fe3ef46cc021… originals=20"
     }
   ]
 }
