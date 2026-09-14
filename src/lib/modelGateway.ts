@@ -43,7 +43,7 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
 
 export async function chatComplete(
   messages: ChatMessage[],
-  opts?: { timeoutMs?: number; maxAttempts?: number; maxTokensHint?: string },
+  opts?: { timeoutMs?: number; maxAttempts?: number; maxTokensHint?: string; thinking?: boolean },
 ): Promise<GatewayResult> {
   const timeoutMs = opts?.timeoutMs ?? 60_000;
   const maxAttempts = opts?.maxAttempts ?? 3;
@@ -57,8 +57,9 @@ export async function chatComplete(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const zai = await getClient();
+      // حالت تفکر عمیق (Chain-of-Thought): برای پرسش‌های تحلیلی/پیچیده دقت را به‌شکل محسوس بالا می‌برد
       const completion = await withTimeout(
-        zai.chat.completions.create({ messages, thinking: { type: 'disabled' } }),
+        zai.chat.completions.create({ messages, thinking: { type: opts?.thinking === true ? 'enabled' : 'disabled' } }),
         timeoutMs,
         'model',
       );

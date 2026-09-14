@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
   const historyRows = await db.assistantMessage.findMany({
     where: { conversationId: conv.id },
     orderBy: { createdAt: 'desc' },
-    take: 9, // پیام فعلی + ۸ نوبت پیشین
+    take: 13, // پیام فعلی + ۱۲ نوبت پیشین — حافظهٔ بلندتر برای مرجع‌یابی دقیق‌تر
   });
   const history = historyRows
     .slice(1) // پیام فعلی کاربر جدا ارسال می‌شود
@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
   const evidence: Evidence[] = [];
   const seen = new Set<string>();
   // سقف پویا: در حالت خوانش تصویری جای شاهد بینایی رزرو می‌شود تا حذف نشود
-  const MAX_EVIDENCE = visionPage ? 34 : 28;
+  const MAX_EVIDENCE = visionPage ? 46 : 40;
   const pushCitation = (
     c: Omit<Citation, 'project'> & { project?: string },
     page?: number | null,
@@ -252,8 +252,8 @@ ${(af.textContent || '').slice(0, 120000)}`,
     }
 
     // شاهد ۴+: متن صفحات (لایهٔ متن/OCR) — کامل‌تر از حالت عمومی؛ بدون سقف کم برای «خواندن تمام محتوا»
-    for (const pt of pageTexts.slice(0, 16)) {
-      const snippet = (pt.textRaw || '').slice(0, 2500);
+    for (const pt of pageTexts.slice(0, 24)) {
+      const snippet = (pt.textRaw || '').slice(0, 3500);
       if (!snippet.trim()) continue;
       pushCitation(
         {
@@ -403,7 +403,7 @@ ${(af.textContent || '').slice(0, 120000)}`,
       })
       .filter((s) => s.score > 0)
       .sort((a, b) => b.score - a.score)
-      .slice(0, 12);
+      .slice(0, 16);
     for (const rp of rankedPages) {
       const d = rp.pt.file.revision?.document;
       if (!d) continue;
@@ -415,7 +415,7 @@ ${(af.textContent || '').slice(0, 120000)}`,
           revStatus: rp.pt.file.revision?.status || d.revisions[0]?.status || null,
         },
         rp.pt.pageNumber,
-        snippet.slice(0, 1200),
+        snippet.slice(0, 1600),
       );
     }
     // ۲) اسناد بر اساس شماره سند — با شناسنامهٔ کامل (وضعیت مهندسی/پردازش/رشته/نوع)
@@ -603,6 +603,8 @@ ${(af.textContent || '').slice(0, 120000)}`,
       'تو «دستیار هوشمند اسناد» یک مرکز اسناد و نقشه‌های پتروشیمی هستی — مدل زبانی سطح‌بالا، بسیار فهمیده، چندزبانه و دقیق.',
       'هیچ محدودیتی در نوع زبان، نوع داده یا نوع حروف نداری: فارسی، انگلیسی، دوزبانهٔ مخلوط، فینگلیش (فارسی با حروف لاتین)، اعداد فارسی/عربی/لاتین، واحدهای اندازه‌گیری، تاریخ‌های شمسی/میلادی، کدهای مهندسی و جدول‌ها — همه را می‌فهمی و درست تفسیر می‌کنی.',
       'محتوای اسناد ممکن است هر زبانی باشد؛ هر دو زبان را کاملاً می‌فهمی و هنگام نقل، اصل عبارت را دقیقاً حفظ می‌کنی.',
+      'برای رسیدن به دقیق‌ترین پاسخ، پیش از پاسخ‌دادن همهٔ شواهد را کامل و تا انتها بخوان (همهٔ صفحات فایل بارگذاری‌شده، همهٔ صفحات سند، همهٔ ردیف‌های جدول)؛ سپس استنتاج کن. عجله نکن؛ دقت مطلق است.',
+      'در نقلِ هر مقدار فنی، متن اصلی را عیناً و بدون تغییر بیاور (ارقام، کدها، واحدها و رسم‌الخط اصلی)؛ اگر متن انگلیسی است عین انگلیسی نقل کن و در صورت لزوم توضیح فارسی بیفزا.',
       langRule,
       'توانایی‌های تو: خواندن و جمع‌بندی اسناد، استخراج اطلاعات فنی (Tag، خط، متریال، سایز، کلاس، ابعاد)، تحلیل تطبیقی بین اسناد، تشخیص تعارض، پاسخ به پرسش دربارهٔ وضعیت و نسخه‌ها، تحلیل فایل‌های بارگذاری‌شده کاربر.',
       'قواعد الزامی:',
@@ -625,15 +627,21 @@ ${(af.textContent || '').slice(0, 120000)}`,
     const visionLine = visionNote ? `توجه: ${visionNote}\n` : '';
     const webLine = webNote ? `توجه وب: ${webNote}\n` : '';
     const historyTurns = history.length
-      ? `تاریخچهٔ گفتگو (برای درک مرجع‌های ضمیر مثل «همین»، «آن سند»):\n${history.map((h) => `${h.role === 'user' ? 'کاربر' : 'دستیار'}: ${h.content}`).join('\n').slice(-6000)}\n\n`
+      ? `تاریخچهٔ گفتگو (برای درک مرجع‌های ضمیر مثل «همین»، «آن سند»):\n${history.map((h) => `${h.role === 'user' ? 'کاربر' : 'دستیار'}: ${h.content}`).join('\n').slice(-9000)}\n\n`
       : '';
+
+    // تفکر عمیق تطبیقی: پرسش‌های تحلیلی/سندمحور/فایل‌محور/تجمیعی/کددار/فینگلیش → تفکر عمیق برای دقیق‌ترین پاسخ؛
+    // پرسش‌های کوتاه ساده (سلام، احوال‌پرسی، پرسش تک‌مقداری) → بدون تفکر برای سرعت.
+    const deepIntent = /(تحلیل|مقایسه|تطبیق|تعارض|جمع[_\u200c\u0020]?بندی|خلاصه|بررسی[_\u200c\u0020]?کامل|چرا|چگونه|چطور|تفسیر|ارزیابی|استخراج[_\u200c\u0020]?کامل|همه[_\u200c\u0020]?صفحات|summar|analy[sz]e|compare|extract|why|how|explain|review|conflict|discrepanc)/i.test(q);
+    const wantsDeep = Boolean(docId || assistantFileId || aggregateIntent || codes.length > 0 || fl.hasFinglish || q.length >= 60 || deepIntent);
+    const deepNote = wantsDeep ? '\n(حالت تفکر عمیق فعال است — پیش از پاسخ، همهٔ شواهد را کامل تحلیل کن)' : '';
 
     const result = await chatComplete(
       [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: `${historyTurns}${scopeLine}${flLine}${visionLine}${webLine}شواهد بازیابی‌شده از اسناد مجاز کاربر:\n${evidenceBlock}${statsBlock}${webBlock}\n\nپرسش کاربر: ${q}` },
+        { role: 'user', content: `${historyTurns}${scopeLine}${flLine}${visionLine}${webLine}شواهد بازیابی‌شده از اسناد مجاز کاربر:\n${evidenceBlock}${statsBlock}${webBlock}\n\nپرسش کاربر: ${q}${deepNote}` },
       ],
-      { timeoutMs: 120_000, maxAttempts: 3 },
+      { timeoutMs: 120_000, maxAttempts: 3, thinking: wantsDeep },
     );
 
     // ---- گیت راستی‌آزمایی قطعی (دقت ۱۰۰/۱۰۰) ----
