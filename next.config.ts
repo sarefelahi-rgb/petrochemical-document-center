@@ -2,7 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  /* config options here */
+  // ریشهٔ workspace را قطعی می‌کند — در build تودرتو (محیط استقرار پلتفرم) توربوپک
+  // ریشه را اشتباه استنتاج نمی‌کند و خروجی standalone کامل باقی می‌ماند (server.js)
+  turbopack: {
+    root: process.cwd(),
+  },
+  outputFileTracingRoot: process.cwd(),
   typescript: {
     ignoreBuildErrors: true,
   },

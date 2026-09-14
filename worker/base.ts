@@ -1,13 +1,23 @@
 // Worker مستقل پردازش — مرحله B
 // اجرا: bun worker/worker.ts  (کاربر غیر ریشه، بدون تماس شبکه، سقف حافظه از اسکریپت npm)
 import { PrismaClient } from '@prisma/client';
+import fs from 'fs';
 import path from 'path';
 
 export const DATA_ROOT = path.join(process.cwd(), 'data');
 export const OBJECT_ROOT = path.join(DATA_ROOT, 'objectstore');
 export const TMP_ROOT = path.join(DATA_ROOT, 'tmp');
 
-export const db = new PrismaClient();
+// همان fallback مسیر پایگاه‌داده مانند src/lib/db.ts — استقرار تازه بدون .env هم کار کند
+function resolveDatabaseUrl(): string {
+  const fromEnv = process.env.DATABASE_URL?.trim();
+  if (fromEnv) return fromEnv;
+  const dir = path.join(process.cwd(), 'db');
+  try { fs.mkdirSync(dir, { recursive: true }); } catch {}
+  return 'file:' + path.join(dir, 'custom.db');
+}
+
+export const db = new PrismaClient({ datasourceUrl: resolveDatabaseUrl() });
 
 // یک واژه با مختصات نرمال 0..1 نسبت به صفحه — پایهٔ جست‌وجو و هایلایت
 export interface W {

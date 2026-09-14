@@ -25,6 +25,7 @@ db/*.db-wal
 db/*.db-shm
 
 # ---------- internal workspace artifacts ----------
+tmp/
 tool-results/
 worklog.md
 agent-ctx/
