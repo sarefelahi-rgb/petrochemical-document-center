@@ -85,7 +85,7 @@ export function DossierView({ initialRef, go }: { initialRef?: string; go: (view
                 <div className="text-xs text-muted-foreground">شناسه</div>
                 <div className="code-ltr font-bold text-base">{data.tag?.tag || data.line?.lineNumber || data.ref}</div>
               </div>
-              {data.tag?.description && <div><div className="text-xs text-muted-foreground">شرح</div><div>{data.tag.description}</div></div>}
+              {data.tag?.description && <div><div className="text-xs text-muted-foreground">شرح</div><div dir="auto">{data.tag.description}</div></div>}
               {data.line?.spec && <div><div className="text-xs text-muted-foreground">Spec</div><div className="code-ltr">{data.line.spec}</div></div>}
               {data.line?.unit && <div><div className="text-xs text-muted-foreground">واحد</div><div className="code-ltr">{data.line.unit}</div></div>}
               <div className="mr-auto flex gap-2">
@@ -118,7 +118,7 @@ export function DossierView({ initialRef, go }: { initialRef?: string; go: (view
                       </Badge>
                       {d.revision && <Badge variant="outline">Rev {d.revision}</Badge>}
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1">{d.title}</div>
+                    <div dir="auto" className="text-sm text-muted-foreground mt-1 text-start">{d.title}</div>
                   </button>
                 ))}
               </CardContent>

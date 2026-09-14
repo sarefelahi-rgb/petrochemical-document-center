@@ -13,6 +13,7 @@ import {
   Bot, PanelRightClose, PanelRightOpen, FileText, X, Sparkles, Globe, ScanText, Lock, Paperclip, FileUp,
 } from 'lucide-react';
 import { api, fmtJalali } from './api';
+import { toPersianDigits } from '@/lib/normalize';
 
 interface Citation {
   documentId: string; docNumber: string; title: string; project: string;
@@ -172,18 +173,19 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
   }
 
   // ---------- رندر Markdown پاسخ دستیار (سبک چت‌جی‌پی‌تی) ----------
+  // dir=auto روی هر بلاک: پاراگراف فارسی راست‌چین، پاراگراف انگلیسی چپ‌چین
   const mdComponents = {
-    p: (props: React.HTMLAttributes<HTMLParagraphElement>) => <p className="mb-2 last:mb-0" {...props} />,
+    p: (props: React.HTMLAttributes<HTMLParagraphElement>) => <p dir="auto" className="mb-2 last:mb-0 text-start" {...props} />,
     strong: (props: React.HTMLAttributes<HTMLElement>) => <strong className="font-bold" {...props} />,
     em: (props: React.HTMLAttributes<HTMLElement>) => <em className="italic" {...props} />,
     ul: (props: React.HTMLAttributes<HTMLUListElement>) => <ul className="list-disc pr-5 mb-2 space-y-1" {...props} />,
     ol: (props: React.HTMLAttributes<HTMLOListElement>) => <ol className="list-decimal pr-5 mb-2 space-y-1" {...props} />,
-    li: (props: React.HTMLAttributes<HTMLLIElement>) => <li className="leading-6" {...props} />,
-    h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => <h3 className="font-bold text-base mb-1" {...props} />,
-    h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => <h3 className="font-bold text-base mb-1" {...props} />,
-    h3: (props: React.HTMLAttributes<HTMLHeadingElement>) => <h3 className="font-bold mb-1" {...props} />,
+    li: (props: React.HTMLAttributes<HTMLLIElement>) => <li dir="auto" className="leading-6 text-start" {...props} />,
+    h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => <h3 dir="auto" className="font-bold text-base mb-1 text-start" {...props} />,
+    h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => <h3 dir="auto" className="font-bold text-base mb-1 text-start" {...props} />,
+    h3: (props: React.HTMLAttributes<HTMLHeadingElement>) => <h3 dir="auto" className="font-bold mb-1 text-start" {...props} />,
     code: (props: React.HTMLAttributes<HTMLElement>) => <code className="code-ltr rounded bg-muted px-1 py-0.5 text-xs" {...props} />,
-    blockquote: (props: React.HTMLAttributes<HTMLElement>) => <blockquote className="border-r-2 border-teal-700/50 pr-3 text-muted-foreground mb-2" {...props} />,
+    blockquote: (props: React.HTMLAttributes<HTMLElement>) => <blockquote dir="auto" className="border-r-2 border-teal-700/50 pr-3 text-muted-foreground mb-2 text-start" {...props} />,
   };
 
   const activeTitle = convs.find((c) => c.id === activeId)?.title || (activeId ? 'گفت‌وگو' : 'گفت‌وگوی جدید');
@@ -219,9 +221,9 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
             className={`group relative rounded-lg text-sm transition-colors ${c.id === activeId ? 'bg-teal-700 text-white' : 'hover:bg-accent'}`}
           >
             <button onClick={() => openConv(c.id)} className="block w-full text-right px-3 py-2.5" title={c.title}>
-              <span className="block truncate font-medium leading-5">{c.title}</span>
+              <span dir="auto" className="block truncate font-medium leading-5 text-start">{c.title}</span>
               <span className={`block text-[11px] mt-0.5 ${c.id === activeId ? 'text-teal-100' : 'text-muted-foreground'}`}>
-                {fmtJalali(c.createdAt)} · {c.messageCount} پیام
+                {fmtJalali(c.createdAt)} · {toPersianDigits(String(c.messageCount))} پیام
               </span>
             </button>
             <DropdownMenu>
@@ -276,7 +278,7 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
               <PanelRightClose className="h-4 w-4" />
             </Button>
           )}
-          <h1 className="text-sm font-semibold truncate">{activeTitle}</h1>
+          <h1 dir="auto" className="text-sm font-semibold truncate">{activeTitle}</h1>
           {docScope && (
             <span className="inline-flex items-center gap-1 rounded-full bg-teal-700/10 text-teal-800 dark:text-teal-200 px-2.5 py-1 text-[11px] max-w-[260px]" title={`محدوده: ${docScope.title}`}>
               <Lock className="h-3 w-3 shrink-0" />
@@ -319,7 +321,7 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
           {turns.map((t, i) =>
             t.role === 'USER' ? (
               <div key={i} className="flex justify-start" data-testid="msg-user">
-                <div className="rounded-2xl rounded-tr-md bg-teal-700 text-white px-4 py-3 max-w-[85%] text-sm leading-6 whitespace-pre-wrap">
+                <div className="rounded-2xl rounded-tr-md bg-teal-700 text-white px-4 py-3 max-w-[85%] text-sm leading-6 whitespace-pre-wrap" dir="auto" data-bidi="auto">
                   {t.fileChip && (
                     <span className="flex items-center gap-2 rounded-lg bg-white/15 px-2.5 py-1.5 mb-2 max-w-xs" dir="ltr">
                       <FileUp className="h-4 w-4 shrink-0" />
@@ -336,12 +338,12 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
                   <Bot className="h-[18px] w-[18px] text-teal-700" />
                 </div>
                 <div className="min-w-0 flex-1 space-y-2.5">
-                  <div className="rounded-2xl rounded-tl-md border bg-background px-4 py-3 text-sm leading-7" data-testid="assistant-content">
+                  <div className="rounded-2xl rounded-tl-md border bg-background px-4 py-3 text-sm leading-7 md-bidi" data-testid="assistant-content">
                     <Markdown components={mdComponents}>{t.content}</Markdown>
                   </div>
                   {t.citations && t.citations.length > 0 && (
                     <div className="space-y-1.5" data-testid="assistant-citations">
-                      <p className="text-xs font-medium text-muted-foreground">منابع ({t.citations.length}):</p>
+                      <p className="text-xs font-medium text-muted-foreground">منابع ({toPersianDigits(String(t.citations.length))}):</p>
                       <div className="grid gap-1.5 sm:grid-cols-2">
                         {t.citations.map((c, ci) =>
                           c.source === 'web' ? (
@@ -354,10 +356,10 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
                             >
                               <span className="flex items-center gap-1.5 text-xs">
                                 <Globe className="h-3 w-3 shrink-0 text-sky-700" />
-                                <span className="font-semibold truncate">{c.title}</span>
+                                <span dir="auto" className="font-semibold truncate text-start">{c.title}</span>
                                 <span className="shrink-0 rounded bg-sky-700/10 text-sky-700 px-1.5 py-0.5 text-[10px]">وب</span>
                               </span>
-                              {c.snippet && <span className="block text-[11px] text-muted-foreground mt-1 line-clamp-2 leading-4">{c.snippet}</span>}
+                              {c.snippet && <span dir="auto" className="block text-[11px] text-muted-foreground mt-1 line-clamp-2 leading-4 text-start">{c.snippet}</span>}
                               <span className="block text-[10px] text-sky-700 mt-1 truncate" dir="ltr">{c.url}</span>
                             </a>
                           ) : (
@@ -372,12 +374,12 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
                                 {c.source === 'vision' && <span className="shrink-0 rounded bg-violet-700/10 text-violet-700 px-1.5 py-0.5 text-[10px]">خوانش تصویری</span>}
                                 {c.page != null && (
                                   <span className="shrink-0 rounded bg-teal-700/10 text-teal-700 px-1.5 py-0.5 text-[10px] font-medium">
-                                    صفحهٔ {c.page}
+                                    صفحهٔ {toPersianDigits(String(c.page))}
                                   </span>
                                 )}
                               </span>
-                              <span className="block text-[11px] text-muted-foreground mt-1 truncate">{c.title}</span>
-                              {c.snippet && <span className="block text-[11px] text-muted-foreground/80 mt-0.5 line-clamp-2 leading-4">{c.snippet}</span>}
+                              <span dir="auto" className="block text-[11px] text-muted-foreground mt-1 truncate text-start">{c.title}</span>
+                              {c.snippet && <span dir="auto" className="block text-[11px] text-muted-foreground/80 mt-0.5 line-clamp-2 leading-4 text-start">{c.snippet}</span>}
                               <span className="block text-[11px] text-muted-foreground mt-1">
                                 پروژه <span className="code-ltr">{c.project || '—'}</span> · Rev <span className="code-ltr">{c.revision || '—'}</span>
                               </span>
@@ -427,7 +429,7 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
 
         {error && (
           <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-red-300 bg-red-50 dark:bg-red-950/30 px-3 py-2 text-sm text-red-700 dark:text-red-300">
-            <span>{error}</span>
+            <span dir="auto">{error}</span>
             <button onClick={() => setError('')} aria-label="بستن خطا"><X className="h-4 w-4" /></button>
           </div>
         )}
@@ -492,6 +494,7 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
               ref={taRef}
               value={q}
               rows={1}
+              dir="auto"
               onChange={(e) => { setQ(e.target.value); autoGrow(); }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(q); }

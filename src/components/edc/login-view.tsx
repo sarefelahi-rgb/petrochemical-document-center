@@ -76,7 +76,7 @@ export function LoginView({ onLoggedIn }: { onLoggedIn: (mustChange: boolean) =>
                   <Label htmlFor="password">رمز عبور</Label>
                   <Input id="password" type="password" dir="ltr" className="text-left" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
-                {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+                {error && <Alert variant="destructive"><AlertDescription dir="auto">{error}</AlertDescription></Alert>}
                 <Button type="submit" className="w-full" disabled={busy}>{busy ? 'در حال بررسی…' : 'ورود'}</Button>
                 <p className="text-xs text-muted-leading text-muted-foreground">
                   پنج تلاش ناموفق باعث قفل موقت حساب می‌شود.
@@ -107,7 +107,7 @@ export function LoginView({ onLoggedIn }: { onLoggedIn: (mustChange: boolean) =>
                   <Label htmlFor="code">کد یک‌بارمصرف</Label>
                   <Input id="code" dir="ltr" className="text-center font-mono text-lg tracking-widest" inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} required />
                 </div>
-                {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+                {error && <Alert variant="destructive"><AlertDescription dir="auto">{error}</AlertDescription></Alert>}
                 <Button type="submit" className="w-full" disabled={busy}>تأیید و ورود</Button>
               </form>
             </CardContent>

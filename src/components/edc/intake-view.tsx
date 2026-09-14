@@ -204,7 +204,7 @@ export function IntakeView({ isAdmin }: { isAdmin: boolean }) {
           {!isAdmin && (
             <div className="space-y-1.5">
               <Label htmlFor="intake-note">یادداشت برای مدیر (اختیاری)</Label>
-              <Input id="intake-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="مثال: ایزومتریک به‌روزشدهٔ خط 1183" />
+              <Input id="intake-note" value={note} onChange={(e) => setNote(e.target.value)} dir="auto" placeholder="مثال: ایزومتریک به‌روزشدهٔ خط 1183" />
             </div>
           )}
           {uploading && (
@@ -239,8 +239,8 @@ export function IntakeView({ isAdmin }: { isAdmin: boolean }) {
                   <span className="font-medium text-sm truncate max-w-[16rem]" dir="ltr" title={it.originalName}>{it.originalName}</span>
                   <span className={`rounded px-2 py-0.5 text-[11px] font-medium ${st.cls}`}>{st.label}</span>
                   <span className="text-[11px] text-muted-foreground">{fmtSize(it.size)} · {fmtJalali(it.createdAt, true)}</span>
-                  {it.uploader && <span className="text-[11px] text-muted-foreground">· ارسال: {it.uploader.fullName}</span>}
-                  {it.note && <span className="text-[11px] text-muted-foreground w-full">یادداشت: «{it.note}»</span>}
+                  {it.uploader && <span className="text-[11px] text-muted-foreground">· ارسال: <span dir="auto">{it.uploader.fullName}</span></span>}
+                  {it.note && <span dir="auto" className="text-[11px] text-muted-foreground w-full text-start">یادداشت: «{it.note}»</span>}
                 </div>
 
                 {/* پیشنهاد هوش مصنوعی */}
@@ -251,13 +251,13 @@ export function IntakeView({ isAdmin }: { isAdmin: boolean }) {
                     </p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5">
                       <p>شماره: <span className="code-ltr font-medium">{it.ai.docNumber || '—'}</span></p>
-                      <p className="col-span-2 md:col-span-3 truncate">عنوان: <span className="font-medium">{it.ai.title || '—'}</span></p>
+                      <p className="col-span-2 md:col-span-3 truncate">عنوان: <span dir="auto" className="font-medium">{it.ai.title || '—'}</span></p>
                       <p>پروژه: <span className="code-ltr font-medium">{it.ai.projectCode || '—'}</span></p>
                       <p>رشته: <span className="code-ltr">{it.ai.discipline || '—'}</span></p>
                       <p>نوع: <span className="code-ltr">{it.ai.docType || '—'}</span></p>
                       <p>محرمانگی: <span className="font-medium">{it.ai.confidentiality ? (CONF_LABELS[it.ai.confidentiality] || it.ai.confidentiality) : '—'}</span></p>
                     </div>
-                    {it.ai.summary && <p className="text-muted-foreground leading-5">خلاصه: {it.ai.summary}</p>}
+                    {it.ai.summary && <p dir="auto" className="text-muted-foreground leading-5 text-start">خلاصه: {it.ai.summary}</p>}
                     {it.aiNote && <p className="text-amber-700 dark:text-amber-400">{it.aiNote}</p>}
                   </div>
                 )}
@@ -267,14 +267,14 @@ export function IntakeView({ isAdmin }: { isAdmin: boolean }) {
                 {it.hasText && (
                   <details className="text-xs">
                     <summary className="cursor-pointer text-muted-foreground">متن استخراج‌شده ({it.textSource === 'OCR' ? 'OCR' : it.textSource === 'TEXT_LAYER' ? 'لایهٔ متنی' : 'فایل'}{it.pageCount ? `، ${it.pageCount} صفحه` : ''})</summary>
-                    <p className="mt-1.5 rounded bg-muted/40 p-2 leading-5 max-h-40 overflow-y-auto whitespace-pre-wrap">{it.extractedSample}…</p>
+                    <p className="mt-1.5 rounded bg-muted/40 p-2 leading-5 max-h-40 overflow-y-auto whitespace-pre-wrap" dir="auto">{it.extractedSample}…</p>
                   </details>
                 )}
                 {!it.hasText && <p className="text-xs text-muted-foreground">متن قابل استخراجی یافت نشد{it.textSource === null ? ' (فایل بدون محتوای متنی یا فرمت غیرمتنی)' : ''}.</p>}
 
                 {/* وضعیت نهایی */}
                 {it.status === 'APPROVED' && it.document && (
-                  <p className="text-xs text-emerald-700 dark:text-emerald-400">✓ سند رسمی: <span className="code-ltr font-medium">{it.document.docNumber}</span> — «{it.document.title}»</p>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400">✓ سند رسمی: <span className="code-ltr font-medium">{it.document.docNumber}</span> — <span dir="auto">«{it.document.title}»</span></p>
                 )}
                 {it.status === 'REJECTED' && it.reviewNote && <p className="text-xs text-red-700 dark:text-red-400">دلیل رد: {it.reviewNote}</p>}
 
@@ -334,7 +334,7 @@ export function IntakeView({ isAdmin }: { isAdmin: boolean }) {
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>عنوان</Label>
-              <Input value={editFields.title || ''} onChange={(e) => setEditFields({ ...editFields, title: e.target.value })} />
+              <Input dir="auto" value={editFields.title || ''} onChange={(e) => setEditFields({ ...editFields, title: e.target.value })} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>پروژه *</Label>

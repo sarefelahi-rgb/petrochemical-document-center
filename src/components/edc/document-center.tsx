@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChevronLeft, ChevronDown, Search, Star, LayoutGrid, Table2, Bookmark, X, FileText } from 'lucide-react';
 import { api, STATUS_LABELS, CONF_LABELS } from './api';
+import { toPersianDigits } from '@/lib/normalize';
 import { StatusBadge, ConfBadge, SampleBadge } from './badges';
 
 interface TreeNode { id: string; code: string; name: string; areas?: Array<{ id: string; code: string; name: string; units: Array<{ id: string; code: string; name: string; docCount: number }> }> }
@@ -169,6 +170,7 @@ export function DocumentCenter({ go, refreshFavorites, favoriteIds }: {
                     onChange={(e) => setQ(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && fetchDocs(1)}
                     className="pr-9"
+                    dir="auto"
                     aria-label="جست‌وجو در اسناد"
                   />
                 </div>
@@ -210,17 +212,17 @@ export function DocumentCenter({ go, refreshFavorites, favoriteIds }: {
               {contentHits !== null && (
                 <div className="rounded-lg border bg-muted/20 p-2 space-y-1" data-testid="content-search-results">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium">نتایج جست‌وجو در متن صفحات ({contentHits.length > 0 ? `${contentHits.length} تطبیق` : 'بدون نتیجه'})</p>
+                    <p className="text-xs font-medium">نتایج جست‌وجو در متن صفحات ({contentHits.length > 0 ? `${toPersianDigits(String(contentHits.length))} تطبیق` : 'بدون نتیجه'})</p>
                     <Button size="sm" variant="ghost" onClick={() => setContentHits(null)}><X className="h-3.5 w-3.5" /></Button>
                   </div>
                   {contentHits.length === 0 && <p className="text-xs text-muted-foreground">در متن صفحات مدارک مجاز شما تطبیقی یافت نشد. مدارک پردازش‌نشده در جست‌وجوی متن نمی‌آیند (به‌عنوان فایل قابل مدیریت‌اند).</p>}
                   {contentHits.map((h, i) => (
                     <button key={i} onClick={() => go('document', h.id)} className="block w-full text-right text-xs rounded px-2 py-1.5 hover:bg-accent">
                       <span className="code-ltr font-bold">{h.docNumber}</span>
-                      <span className="text-muted-foreground"> · {h.title} · {h.project}{h.revision ? ` · R${h.revision}` : ''}</span>
-                      <Badge variant="outline" className="mx-1">صفحه {h.page}</Badge>
+                      <span className="text-muted-foreground"> · <span dir="auto">{h.title}</span> · <span className="code-ltr">{h.project}</span>{h.revision ? ` · R${h.revision}` : ''}</span>
+                      <Badge variant="outline" className="mx-1">صفحه {toPersianDigits(String(h.page))}</Badge>
                       <Badge variant="outline">{h.source === 'OCR' ? 'OCR' : 'متن'}</Badge>
-                      <div className="text-muted-foreground truncate">{h.snippet.slice(0, 120)}</div>
+                      <div dir="auto" className="text-muted-foreground truncate text-start">{h.snippet.slice(0, 120)}</div>
                     </button>
                   ))}
                 </div>
@@ -249,7 +251,7 @@ export function DocumentCenter({ go, refreshFavorites, favoriteIds }: {
                     {rows.map((d) => (
                       <TableRow key={d.id} className="cursor-pointer" onClick={() => go('document', d.id)}>
                         <TableCell className="font-medium"><span className="code-ltr">{d.docNumber}</span></TableCell>
-                        <TableCell className="max-w-[280px]"><div className="truncate">{d.title}</div></TableCell>
+                        <TableCell className="max-w-[280px]"><div dir="auto" className="truncate text-start">{d.title}</div></TableCell>
                         <TableCell className="text-xs text-muted-foreground">{d.unit ? <span className="code-ltr">{d.unit.code}</span> : '—'}</TableCell>
                         <TableCell><span className="code-ltr text-xs">{d.latestRevision?.revisionCode || '—'}</span></TableCell>
                         <TableCell><StatusBadge status={d.status} /></TableCell>
@@ -284,7 +286,7 @@ export function DocumentCenter({ go, refreshFavorites, favoriteIds }: {
                         <Star className={`h-4 w-4 ${favoriteIds.has(d.id) ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground'}`} />
                       </button>
                     </div>
-                    <div className="text-sm text-muted-foreground line-clamp-2 min-h-10">{d.title}</div>
+                    <div dir="auto" className="text-sm text-muted-foreground line-clamp-2 min-h-10 text-start">{d.title}</div>
                     <div className="flex flex-wrap gap-1.5">
                       {d.isSample && <SampleBadge />}
                       <StatusBadge status={d.status} />
@@ -301,7 +303,7 @@ export function DocumentCenter({ go, refreshFavorites, favoriteIds }: {
           {pages > 1 && (
             <div className="flex items-center justify-center gap-2">
               <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => fetchDocs(page - 1)}>قبلی</Button>
-              <span className="text-sm text-muted-foreground">صفحه {page} از {pages} — {total} سند</span>
+              <span className="text-sm text-muted-foreground">صفحه {toPersianDigits(String(page))} از {toPersianDigits(String(pages))} — {toPersianDigits(String(total))} سند</span>
               <Button variant="outline" size="sm" disabled={page >= pages} onClick={() => fetchDocs(page + 1)}>بعدی</Button>
             </div>
           )}

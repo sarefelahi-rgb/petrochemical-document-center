@@ -57,7 +57,7 @@
   {
     "name": "A-12 تشخیص محتوای تکراری",
     "ok": true,
-    "evidence": "duplicateOf=cmu14ufip001plkyce1ks26g9"
+    "evidence": "duplicateOf=cmu17k6iu001plk5i0gz0t5uu"
   },
   {
     "name": "A-13 قرنطینه: پسوند pdf با محتوای غیر PDF",
@@ -122,12 +122,12 @@
   {
     "name": "A-30 دستیار: ارجاع فقط از اسناد مجاز",
     "ok": true,
-    "evidence": "citations=1 model=true"
+    "evidence": "citations=2 model=true"
   },
   {
     "name": "A-10 دستیار: نشت سند پروژه ب وجود ندارد",
     "ok": true,
-    "evidence": "citations=0"
+    "evidence": "citations=1"
   },
   {
     "name": "A-27 ایجاد داده نمونه برچسب‌خورده",

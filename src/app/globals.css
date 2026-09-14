@@ -24,6 +24,38 @@
   font-display: swap;
 }
 
+/* قلم لاتین — Carlito (میزبانی محلی): رسم‌الخط لاتین با قلم بومی لاتین.
+   چون Carlito هیچ نویسهٔ عربی/فارسی ندارد، متن فارسی خودکار به Vazirmatn می‌افتد؛
+   نتیجه: هر زبان با قلم و رسم‌الخط درست خودش رندر می‌شود. */
+@font-face {
+  font-family: 'Carlito';
+  src: url('/fonts/Carlito-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Carlito';
+  src: url('/fonts/Carlito-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Carlito';
+  src: url('/fonts/Carlito-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Carlito';
+  src: url('/fonts/Carlito-BoldItalic.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -141,14 +173,33 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Vazirmatn', Tahoma, 'Segoe UI', 'Noto Sans Arabic', sans-serif;
+    /* لاتین ← Carlito، فارسی ← Vazirmatn (رسم‌الخط هر زبان) */
+    font-family: 'Carlito', 'Vazirmatn', Tahoma, 'Segoe UI', 'Noto Sans Arabic', sans-serif;
   }
   /* کدهای مهندسی همیشه چپ‌به‌راست و با قلم ثابت عرض */
   .code-ltr {
     direction: ltr;
     unicode-bidi: isolate;
+    text-align: left;
     font-family: 'DejaVu Sans Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     display: inline-block;
+  }
+  /* متن انگلیسی خالص: چپ‌به‌راست + چپ‌چین + قلم لاتین */
+  .en-text {
+    direction: ltr;
+    unicode-bidi: isolate;
+    text-align: left;
+  }
+  /* متن فارسی: راست‌به‌چپ + راست‌چین */
+  .fa-text {
+    direction: rtl;
+    unicode-bidi: isolate;
+    text-align: right;
+  }
+  /* جهت خودکار: جهت هر بلاک از نخستین نویسهٔ قوی متنش تعیین می‌شود
+     (پاراگراف فارسی راست‌چین، پاراگراف انگلیسی چپ‌چین — حتی در یک متن) */
+  .bidi-auto {
+    unicode-bidi: plaintext;
   }
   .dark body {
     color-scheme: dark;
@@ -158,6 +209,30 @@
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
+}
+
+/* دوجهتگی محتوای چندزبانه (متن تولیدی، پیام‌ها، خلاصه‌ها)
+   هر پاراگراف/فهرست/نقل‌قول جهت خود را از محتوایش می‌گیرد؛
+   کد و لینک همیشه LTR ایزوله می‌مانند. */
+.md-bidi p,
+.md-bidi li,
+.md-bidi h1,
+.md-bidi h2,
+.md-bidi h3,
+.md-bidi h4,
+.md-bidi blockquote,
+.md-bidi td,
+.md-bidi th {
+  unicode-bidi: plaintext;
+}
+.md-bidi code {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+.md-bidi pre {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
 }
 
 /* اسکرول‌بار نازک برای فهرست‌های طولانی */

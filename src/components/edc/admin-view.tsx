@@ -135,7 +135,7 @@ function UsersTab() {
         <CardHeader className="pb-2"><CardTitle className="text-base">کاربر جدید</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
           <div className="space-y-1.5"><Label>نام کاربری</Label><Input dir="ltr" className="text-left" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} /></div>
-          <div className="space-y-1.5"><Label>نام کامل</Label><Input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></div>
+          <div className="space-y-1.5"><Label>نام کامل</Label><Input dir="auto" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></div>
           <div className="space-y-1.5">
             <Label>نقش</Label>
             <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
@@ -175,7 +175,7 @@ function UsersTab() {
           {users.map((u) => (
             <div key={u.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2.5">
               <div className="min-w-0">
-                <div className="text-sm font-medium">{u.fullName} <span dir="ltr" className="text-xs text-muted-foreground font-mono">({u.username})</span> {u.isSample && <span className="text-xs text-purple-700 dark:text-purple-300">(نمونه)</span>}</div>
+                <div className="text-sm font-medium"><span dir="auto">{u.fullName}</span> <span dir="ltr" className="text-xs text-muted-foreground font-mono">({u.username})</span> {u.isSample && <span className="text-xs text-purple-700 dark:text-purple-300">(نمونه)</span>}</div>
                 <div className="text-xs text-muted-foreground mt-0.5">
                   {ROLE_LABELS[u.role] || u.role} · دسته‌ها: {u.categoryAccess === 'ALL' ? 'همه' : u.categoryAccess && u.categoryAccess.startsWith('[') ? (JSON.parse(u.categoryAccess) as string[]).map((c) => CONF_LABELS[c] || c).join('، ') : CONF_LABELS[u.clearance] || u.clearance} · MFA: {u.mfaEnabled ? 'فعال' : 'غیرفعال'} · آخرین ورود: {fmtJalali(u.lastLoginAt, true)}
                 </div>

@@ -220,7 +220,7 @@ function TransmittalTab({ go }: { go: (view: string, param?: string) => void }) 
                       {docHits.map((d) => (
                         <button key={d.id} onClick={() => addItem(d.id)} className="w-full text-right px-3 py-2 text-xs hover:bg-accent flex items-center justify-between gap-2">
                           <span className="code-ltr font-semibold">{d.docNumber}</span>
-                          <span className="truncate max-w-[55%] text-muted-foreground">{d.title}</span>
+                          <span dir="auto" className="truncate max-w-[55%] text-muted-foreground">{d.title}</span>
                           <Plus className="h-3.5 w-3.5 text-teal-700 shrink-0" />
                         </button>
                       ))}
@@ -235,7 +235,7 @@ function TransmittalTab({ go }: { go: (view: string, param?: string) => void }) 
                   <div key={it.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
                     <button className="text-right min-w-0 group" onClick={() => { setDetail(null); go('document', it.docNumber ? '' : ''); }} title="مشاهده سند">
                       <span className="code-ltr font-semibold group-hover:underline">{it.docNumber}</span>
-                      <span className="block text-xs text-muted-foreground truncate max-w-[380px]">{it.title}</span>
+                      <span dir="auto" className="block text-xs text-muted-foreground truncate max-w-[380px] text-start">{it.title}</span>
                     </button>
                     {detail.canManage && (
                       <div className="flex items-center gap-1">

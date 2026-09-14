@@ -151,7 +151,7 @@ export function DocumentDetail({ docId, go, openPageTarget }: { docId: string; g
             <span className="code-ltr">{doc.docNumberRaw}</span>
             {doc.isSample && <SampleBadge />}
           </h1>
-          <p className="text-sm text-muted-foreground">{doc.title}</p>
+          <p dir="auto" className="text-sm text-muted-foreground text-start">{doc.title}</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={() => go('assistant', docId)} title="پرسش از دستیار هوشمند محدود به همین سند — خواندن کل اطلاعات مجاز">
@@ -290,7 +290,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-0.5 font-medium">{value}</div>
+      <div dir="auto" className="mt-0.5 font-medium text-start">{value}</div>
     </div>
   );
 }

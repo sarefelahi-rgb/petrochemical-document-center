@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search, Upload, MessageSquareText, ClipboardList, FileClock, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { api, fmtJalali } from './api';
+import { toPersianDigits as toFa } from '@/lib/normalize';
 import { StatusBadge, ConfBadge, SampleBadge } from './badges';
 
 interface HomeData {
@@ -33,7 +34,7 @@ export function HomeView({ userName, go }: { userName: string; go: (view: string
   return (
     <div className="space-y-6" data-testid="home-view">
       <div>
-        <h1 className="text-xl font-bold">سلام، {userName}</h1>
+        <h1 className="text-xl font-bold">سلام، <span dir="auto">{userName}</span></h1>
         <p className="text-sm text-muted-foreground mt-1">سه اقدام اصلی — از خانه تا نتیجه حداکثر سه گام</p>
       </div>
 
@@ -64,11 +65,11 @@ export function HomeView({ userName, go }: { userName: string; go: (view: string
         <>
           {/* وضعیت پردازش */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-            <Card><CardContent className="p-4"><div className="text-2xl font-bold">{data.totals.total}</div><div className="text-xs text-muted-foreground mt-1">اسناد در دامنه شما ({data.projectScope} پروژه)</div></CardContent></Card>
-            <Card><CardContent className="p-4"><div className="text-2xl font-bold text-amber-700 dark:text-amber-400">{data.totals.processing}</div><div className="text-xs text-muted-foreground mt-1">در انتظار پردازش استخراج</div></CardContent></Card>
-            <Card><CardContent className="p-4"><div className="text-2xl font-bold text-orange-700 dark:text-orange-400">{data.totals.incomplete}</div><div className="text-xs text-muted-foreground mt-1">شناسنامه ناقص</div></CardContent></Card>
-            <Card><CardContent className="p-4"><div className="text-2xl font-bold text-red-700 dark:text-red-400">{data.totals.quarantined}</div><div className="text-xs text-muted-foreground mt-1">فایل قرنطینه</div></CardContent></Card>
-            <Card><CardContent className="p-4"><div className="text-2xl font-bold">{data.openTasks}</div><div className="text-xs text-muted-foreground mt-1">وظیفه باز در کارتابل</div></CardContent></Card>
+            <Card><CardContent className="p-4"><div className="text-2xl font-bold">{toFa(data.totals.total)}</div><div className="text-xs text-muted-foreground mt-1">اسناد در دامنه شما ({toFa(data.projectScope)} پروژه)</div></CardContent></Card>
+            <Card><CardContent className="p-4"><div className="text-2xl font-bold text-amber-700 dark:text-amber-400">{toFa(data.totals.processing)}</div><div className="text-xs text-muted-foreground mt-1">در انتظار پردازش استخراج</div></CardContent></Card>
+            <Card><CardContent className="p-4"><div className="text-2xl font-bold text-orange-700 dark:text-orange-400">{toFa(data.totals.incomplete)}</div><div className="text-xs text-muted-foreground mt-1">شناسنامه ناقص</div></CardContent></Card>
+            <Card><CardContent className="p-4"><div className="text-2xl font-bold text-red-700 dark:text-red-400">{toFa(data.totals.quarantined)}</div><div className="text-xs text-muted-foreground mt-1">فایل قرنطینه</div></CardContent></Card>
+            <Card><CardContent className="p-4"><div className="text-2xl font-bold">{toFa(data.openTasks)}</div><div className="text-xs text-muted-foreground mt-1">وظیفه باز در کارتابل</div></CardContent></Card>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -79,7 +80,7 @@ export function HomeView({ userName, go }: { userName: string; go: (view: string
                 {data.needsReview.length === 0 && <p className="text-sm text-muted-foreground">وظیفه بازی ندارید.</p>}
                 {data.needsReview.slice(0, 4).map((t) => (
                   <button key={t.id} onClick={() => t.relatedDocId && go('document', t.relatedDocId)} className="w-full text-right flex items-center justify-between rounded-lg border p-3 hover:bg-accent">
-                    <span className="text-sm">{t.title}</span>
+                    <span dir="auto" className="text-sm text-start">{t.title}</span>
                     <ArrowLeft className="h-4 w-4 text-muted-foreground shrink-0" />
                   </button>
                 ))}
@@ -102,7 +103,7 @@ export function HomeView({ userName, go }: { userName: string; go: (view: string
                         <StatusBadge status={d.status} />
                       </span>
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1 line-clamp-1">{d.title}</div>
+                    <div dir="auto" className="text-sm text-muted-foreground mt-1 line-clamp-1 text-start">{d.title}</div>
                     <div className="text-xs text-muted-foreground mt-1">{fmtJalali(d.updatedAt, true)}</div>
                   </button>
                 ))}

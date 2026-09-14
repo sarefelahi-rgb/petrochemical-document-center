@@ -127,7 +127,7 @@ export function AppShell({ me, onLogout, goHome }: { me: MeInfo; onLogout: () =>
             <Button variant="ghost" size="icon" onClick={() => setPwOpen(true)} aria-label="تغییر رمز"><KeyRound className="h-4 w-4" /></Button>
             <Button variant="ghost" size="icon" onClick={onLogout} aria-label="خروج"><LogOut className="h-4 w-4" /></Button>
             <div className="text-xs text-left hidden sm:block">
-              <div className="font-medium leading-4">{me.user.fullName}</div>
+              <div dir="auto" className="font-medium leading-4">{me.user.fullName}</div>
               <div className="text-muted-foreground">{ROLE_LABELS[me.user.role] || me.user.role}</div>
             </div>
           </div>

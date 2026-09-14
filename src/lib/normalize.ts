@@ -7,9 +7,9 @@
 const PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
 const ARABIC_DIGITS = '٠١٢٣٤٥٦٧٨٩';
 
-export function toLatinDigits(s: string): string {
+export function toLatinDigits(s: string | number): string {
   let out = '';
-  for (const ch of s) {
+  for (const ch of String(s)) {
     const p = PERSIAN_DIGITS.indexOf(ch);
     if (p >= 0) { out += String(p); continue; }
     const a = ARABIC_DIGITS.indexOf(ch);
@@ -19,9 +19,9 @@ export function toLatinDigits(s: string): string {
   return out;
 }
 
-export function toPersianDigits(s: string): string {
+export function toPersianDigits(s: string | number): string {
   let out = '';
-  for (const ch of s) {
+  for (const ch of String(s)) {
     if (ch >= '0' && ch <= '9') { out += PERSIAN_DIGITS[Number(ch)]; continue; }
     out += ch;
   }
