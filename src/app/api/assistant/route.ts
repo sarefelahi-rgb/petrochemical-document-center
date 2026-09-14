@@ -15,6 +15,7 @@ import type { Prisma } from '@prisma/client';
 import { requireUser, buildAccessContext, jsonOk, jsonError } from '@/lib/guard';
 import { allowedCategoriesFor } from '@/lib/permissions';
 import { normalizeFa, candidateCodes, digitVariants } from '@/lib/normalize';
+import { finglishExpansion, finglishNoteForModel, dominantLanguage } from '@/lib/finglish';
 import { snippetAround } from '@/lib/contentSearch';
 import { audit } from '@/lib/audit';
 import { chatComplete, webSearch, visionRead, gatewayCircuitOpen } from '@/lib/modelGateway';
@@ -47,7 +48,9 @@ const STOPWORDS = new Set([
   'شده', 'شود', 'باشد', 'تا', 'هم', 'یا', 'و', 'هر', 'چه', 'چیست', 'کدام', 'چند', 'لطفا', 'لطفاً',
   'می', 'را', 'بر', 'درباره', 'کن', 'کنید', 'بده', 'بگو', 'نشان', 'فقط', 'همه', 'بین', 'روی', 'اگر',
   'چون', 'باید', 'مورد', 'موارد', 'بوده', 'بود', 'خواهد', 'چگونه', 'چطور', 'کجا', 'چیزی', 'سلام',
-  'ممنون', 'سپاس', 'اسناد', 'سند', 'پروژه', 'مجاز', 'دستیار', 'میخواهم', 'نمی', 'های', 'هایی', 'هایی'
+  'ممنون', 'سپاس', 'اسناد', 'سند', 'پروژه', 'مجاز', 'دستیار', 'میخواهم', 'نمی', 'های', 'هایی', 'هایی',
+  // فینگلیش‌های نقش‌گذر (پیشوند/حرف اضافه) — وارد بازیابی نمی‌شوند
+  'az', 'be', 'ba', 'va', 'ya', 'ta', 'dar', 'in', 'an', 'ham', 'baraye', 'alan', 'khob', 'khoob',
 ]);
 // نگاشت واژه‌های پرسش فارسی → نام فیلدهای فنی استخراج‌شده (کادر عنوان/MTO)
 const FIELD_SYNONYMS: Record<string, string[]> = {
@@ -128,7 +131,7 @@ export async function POST(req: NextRequest) {
   const evidence: Evidence[] = [];
   const seen = new Set<string>();
   // سقف پویا: در حالت خوانش تصویری جای شاهد بینایی رزرو می‌شود تا حذف نشود
-  const MAX_EVIDENCE = visionPage ? 24 : 18;
+  const MAX_EVIDENCE = visionPage ? 34 : 28;
   const pushCitation = (
     c: Omit<Citation, 'project'> & { project?: string },
     page?: number | null,
@@ -167,7 +170,7 @@ export async function POST(req: NextRequest) {
       { documentId: '', docNumber: '', title: `فایل بارگذاری‌شده: ${af.originalName}`, project: '', revision: null, revStatus: null, source: 'internal' },
       af.pageCount || null,
       `فایل بارگذاری‌شدهٔ کاربر «${af.originalName}» (${srcLabel}${af.pageCount ? `، ${af.pageCount} صفحه` : ''}):
-${(af.textContent || '').slice(0, 12000)}`,
+${(af.textContent || '').slice(0, 60000)}`,
     );
   }
 
@@ -248,9 +251,9 @@ ${(af.textContent || '').slice(0, 12000)}`,
       );
     }
 
-    // شاهد ۴+: متن صفحات (لایهٔ متن/OCR) — کامل‌تر از حالت عمومی
-    for (const pt of pageTexts.slice(0, 8)) {
-      const snippet = (pt.textRaw || '').slice(0, 1000);
+    // شاهد ۴+: متن صفحات (لایهٔ متن/OCR) — کامل‌تر از حالت عمومی؛ بدون سقف کم برای «خواندن تمام محتوا»
+    for (const pt of pageTexts.slice(0, 16)) {
+      const snippet = (pt.textRaw || '').slice(0, 2500);
       if (!snippet.trim()) continue;
       pushCitation(
         {
@@ -265,7 +268,7 @@ ${(af.textContent || '').slice(0, 12000)}`,
 
     // شاهد: ردیف‌های MTO
     if (mtoRows.length) {
-      const rows = mtoRows.slice(0, 25).map((r) =>
+      const rows = mtoRows.slice(0, 40).map((r) =>
         `${r.rawDesc} | متریال: ${fmtVal(r.material)} | سایز اصلی: ${fmtVal(r.sizeMain)}${r.sizeBranch ? `→${r.sizeBranch}` : ''} | کلاس: ${fmtVal(r.cls)} | Sch: ${fmtVal(r.schedule)} | واحد: ${r.unit} | مقدار: ${r.qty}${r.status === 'SUGGESTED' ? ' (پیشنهاد مدل)' : ''}`,
       ).join('\n');
       pushCitation(
@@ -298,10 +301,13 @@ ${(af.textContent || '').slice(0, 12000)}`,
   // --- بازیابی عمومی (وقتی محدود به سند نیستیم، جست‌وجوی سراسری مجاز) ---
   const codes = realCodes(q);
   const faQ = normalizeFa(q);
-  const qTokens = questionTokens(faQ);
+  // فینگلیش: توکن‌های لاتینِ فارسی‌نما به معادل فارسی گسترش می‌یابند (واژه‌نامه + آوانگاری)
+  const fl = finglishExpansion(q);
+  const flTokens = fl.tokens.filter((t) => !STOPWORDS.has(t));
+  const qTokens = Array.from(new Set([...questionTokens(faQ), ...flTokens])).slice(0, 14);
   const fieldHints = new Set<string>();
   for (const [fa, fields] of Object.entries(FIELD_SYNONYMS)) if (faQ.includes(fa)) fields.forEach((f) => fieldHints.add(f));
-  const aggregateIntent = /(چند|تعداد|جمع|مجموع|میانگین|سهم|چقدر|در کل|مجموعا)/.test(faQ);
+  const aggregateIntent = /(چند|تعداد|جمع|مجموع|میانگین|سهم|چقدر|در کل|مجموعا|chand|count|total|sum|chandta)/i.test(faQ) || flTokens.some((t) => ['چند', 'تعداد', 'جمع', 'مجموع'].includes(t));
 
   if (!docId) {
     const [byNumber, byTitle, byLink, pageHits, extractionHits, mtoHits] = await Promise.all([
@@ -309,7 +315,7 @@ ${(af.textContent || '').slice(0, 12000)}`,
         ? db.document.findMany({ where: { ...baseDocWhere, OR: codes.map((c) => ({ docNumber: { contains: c } })) }, include: { project: { select: { code: true } }, revisions: { orderBy: { createdAt: 'desc' }, take: 1, select: { revisionCode: true, status: true } } }, take: 6 })
         : Promise.resolve([]),
       faQ.length >= 2
-        ? db.document.findMany({ where: { ...baseDocWhere, OR: Array.from(new Set(digitVariants(faQ).flatMap((v) => [v, v.toLowerCase()]))).slice(0, 4).map((v) => ({ title: { contains: v } })) }, include: { project: { select: { code: true } }, revisions: { orderBy: { createdAt: 'desc' }, take: 1, select: { revisionCode: true, status: true } } }, take: 6 })
+        ? db.document.findMany({ where: { ...baseDocWhere, OR: Array.from(new Set([...digitVariants(faQ).flatMap((v) => [v, v.toLowerCase()]), ...flTokens])).slice(0, 6).map((v) => ({ title: { contains: v } })) }, include: { project: { select: { code: true } }, revisions: { orderBy: { createdAt: 'desc' }, take: 1, select: { revisionCode: true, status: true } } }, take: 6 })
         : Promise.resolve([]),
       codes.length
         ? db.docLink.findMany({
@@ -400,7 +406,7 @@ ${(af.textContent || '').slice(0, 12000)}`,
           revStatus: rp.pt.file.revision?.status || d.revisions[0]?.status || null,
         },
         rp.pt.pageNumber,
-        snippet.slice(0, 700),
+        snippet.slice(0, 1200),
       );
     }
     // ۲) اسناد بر اساس شماره سند — با شناسنامهٔ کامل (وضعیت مهندسی/پردازش/رشته/نوع)
@@ -514,7 +520,7 @@ ${(af.textContent || '').slice(0, 12000)}`,
         const dataUrl = `data:${mime};base64,${buf.toString('base64')}`;
         const vres = await visionRead(
           `این تصویر صفحهٔ ${visionPage} از سند مهندسی «${scopedDoc.docNumber} — ${scopedDoc.title}» است. پرسش کاربر: «${q}»\n` +
-          `تمام متن‌ها، شماره‌ها، کدها، کادر عنوان و جدول‌های قابل مشاهده را دقیق بخوان و پاسخ را فقط بر اساس همین تصویر بده. هر مورد ناخوانا را صریحاً «ناخوانا» بنویس.`,
+          `تمام متن‌ها، شماره‌ها، کدها، کادر عنوان و جدول‌های قابل مشاهده را دقیق بخوان — هر زبانی (فارسی/انگلیسی/دوزبانه) — و پاسخ را به زبان پرسش کاربر بده (فینگلیش → فارسی). فقط بر اساس همین تصویر پاسخ بده. هر مورد ناخوانا را صریحاً «ناخوانا» بنویس.`,
           dataUrl,
         );
         if (vres.ok) {
@@ -575,9 +581,21 @@ ${(af.textContent || '').slice(0, 12000)}`,
       ? '\n\nمنابع بیرونی (فقط زمینهٔ عمومی — استناد مهندسی فقط با [E#]):\n' + webEvidence.map((w) => { let host = ''; try { host = new URL(w.url || '', 'https://x.invalid').hostname; } catch { host = ''; } return `[${w.key}] ${w.title} — ${host || 'منبع وب'}\n${w.snippet}\n${w.url}`; }).join('\n---\n')
       : '';
 
+    const lang = dominantLanguage(q);
+    const langRule = lang === 'en'
+      ? 'پرسش انگلیسی است؛ پاسخ را انگلیسی روان و درست بنویس.'
+      : lang === 'finglish'
+        ? 'پرسش فینگلیش است (فارسی با حروف لاتین)؛ پاسخ را فارسیِ روان با رسم‌الخط درست بنویس.'
+        : lang === 'mixed'
+          ? 'پرسش ترکیبی/دوزبانه است؛ پاسخ را به زبان غالب پرسش بده و اصطلاحات تخصصی را به همان زبان اصلی حفظ کن.'
+          : 'پرسش فارسی است؛ پاسخ را فارسی روان با رسم‌الخط درست (نیم‌فاصلهٔ درست، ارقام فارسی در متن) بنویس.';
+
     const systemPrompt = [
-      'تو «دستیار هوشمند اسناد» یک مرکز اسناد و نقشه‌های پتروشیمی هستی. فقط فارسی پاسخ بده.',
-      'توانایی‌های تو: خواندن و جمع‌بندی اسناد، استخراج اطلاعات فنی (Tag، خط، متریال، سایز، کلاس، ابعاد)، تحلیل تطبیقی بین اسناد، تشخیص تعارض، پاسخ به پرسش دربارهٔ وضعیت و نسخه‌ها.',
+      'تو «دستیار هوشمند اسناد» یک مرکز اسناد و نقشه‌های پتروشیمی هستی — مدل زبانی سطح‌بالا، بسیار فهمیده، چندزبانه و دقیق.',
+      'هیچ محدودیتی در نوع زبان، نوع داده یا نوع حروف نداری: فارسی، انگلیسی، دوزبانهٔ مخلوط، فینگلیش (فارسی با حروف لاتین)، اعداد فارسی/عربی/لاتین، واحدهای اندازه‌گیری، تاریخ‌های شمسی/میلادی، کدهای مهندسی و جدول‌ها — همه را می‌فهمی و درست تفسیر می‌کنی.',
+      'محتوای اسناد ممکن است هر زبانی باشد؛ هر دو زبان را کاملاً می‌فهمی و هنگام نقل، اصل عبارت را دقیقاً حفظ می‌کنی.',
+      langRule,
+      'توانایی‌های تو: خواندن و جمع‌بندی اسناد، استخراج اطلاعات فنی (Tag، خط، متریال، سایز، کلاس، ابعاد)، تحلیل تطبیقی بین اسناد، تشخیص تعارض، پاسخ به پرسش دربارهٔ وضعیت و نسخه‌ها، تحلیل فایل‌های بارگذاری‌شده کاربر.',
       'قواعد الزامی:',
       '۱) دربارهٔ اسناد پروژه فقط بر پایهٔ شواهد شماره‌دار [E1]...[En] پاسخ بده. از دانش عمومی عدد، شماره سند یا مقدار فنی نساز؛ اما توضیح مفاهیم عمومی مهندسی بدون شاهد مجاز است، به شرط آنکه به‌صراحت «دانش عمومی» نامیده شود.',
       '۲) پس از هر ادعای مستند به سند، شناسهٔ شاهد مثل [E3] را داخل متن بیاور. اگر شاهد کافی نیست، دقیق بنویس «در اسناد مجاز موجود، شاهد کافی پیدا نشد».',
@@ -588,20 +606,23 @@ ${(af.textContent || '').slice(0, 12000)}`,
       '۷) در اختلاف نسخه‌ها، هر دو منبع و وضعیتشان را نشان بده. از Markdown برای ساختار و جدول استفاده کن.',
       '۸) برای پرسش شمارش، جمع یا مقایسهٔ کمّی، فقط از بلوک «آمار دقیق پایگاه‌داده» استفاده کن و اعداد را عیناً بیاور؛ از شمردن حافظه‌ای شواهد خودداری کن.',
       '۹) هیچ عدد، شماره سند، کد یا مقدار فنی از حافظهٔ خودت نساز؛ اگر در شواهد یا آمار نیست، صریح بنویس «در اسناد مجاز موجود یافت نشد».',
-      '۱۰) فایل‌های بارگذاری‌شدهٔ کاربر با برچسب «فایل بارگذاری‌شده» در شواهد هستند؛ دربارهٔ محتوای آن‌ها مثل یک سند با استناد [E#] رفتار کن.',
+      '۱۰) فایل‌های بارگذاری‌شدهٔ کاربر با برچسب «فایل بارگذاری‌شده» در شواهد هستند؛ دربارهٔ محتوای آن‌ها مثل یک سند با استناد [E#] رفتار کن و «تمام» محتوای آن‌ها — هر زبانی که باشد — را می‌خوانی و به هر بخش از فایل ارجاع می‌دهی.',
+      '۱۱) اگر پرسش یا محتوا فینگلیش بود، آن را به فارسی درست برگردان و بر همان اساس پاسخ بده؛ متن انگلیسیِ داخل اسناد را ترجمهٔ آزاد فارسی بده مگر آنکه نقل دقیق لازم باشد.',
     ].join('\n');
 
     const scopeLine = scopeNote ? `محدوده: ${scopeNote}\n` : '';
+    const flNote = finglishNoteForModel(q);
+    const flLine = flNote ? `توجه فینگلیش: ${flNote}\n` : '';
     const visionLine = visionNote ? `توجه: ${visionNote}\n` : '';
     const webLine = webNote ? `توجه وب: ${webNote}\n` : '';
     const historyTurns = history.length
-      ? `تاریخچهٔ گفتگو (برای درک مرجع‌های ضمیر مثل «همین»، «آن سند»):\n${history.map((h) => `${h.role === 'user' ? 'کاربر' : 'دستیار'}: ${h.content}`).join('\n').slice(-3500)}\n\n`
+      ? `تاریخچهٔ گفتگو (برای درک مرجع‌های ضمیر مثل «همین»، «آن سند»):\n${history.map((h) => `${h.role === 'user' ? 'کاربر' : 'دستیار'}: ${h.content}`).join('\n').slice(-6000)}\n\n`
       : '';
 
     const result = await chatComplete(
       [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: `${historyTurns}${scopeLine}${visionLine}${webLine}شواهد بازیابی‌شده از اسناد مجاز کاربر:\n${evidenceBlock}${statsBlock}${webBlock}\n\nپرسش کاربر: ${q}` },
+        { role: 'user', content: `${historyTurns}${scopeLine}${flLine}${visionLine}${webLine}شواهد بازیابی‌شده از اسناد مجاز کاربر:\n${evidenceBlock}${statsBlock}${webBlock}\n\nپرسش کاربر: ${q}` },
       ],
       { timeoutMs: 120_000, maxAttempts: 3 },
     );
