@@ -47,3 +47,4 @@ Thumbs.db
 # ---------- internal environment tooling (eachdar nashavad) ----------
 skills/
 .zscripts/
+.next-deploy-test/
