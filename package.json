@@ -2,6 +2,9 @@
   "name": "petrochemical-document-center",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "prebuild": "prisma generate",
@@ -9,7 +12,7 @@
     "postinstall": "prisma generate",
     "start": "NODE_ENV=production NEXT_RUNTIME=nodejs node .next/standalone/server.js",
     "lint": "eslint .",
-    "db:push": "prisma db push --accept-data-loss",
+    "db:push": "if [ -z \"$DATABASE_URL\" ] && [ ! -f .env ]; then mkdir -p db && export DATABASE_URL=\"file:$PWD/db/custom.db\"; fi; prisma db push --accept-data-loss",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
