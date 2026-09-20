@@ -15,7 +15,7 @@ import type { Prisma } from '@prisma/client';
 import { requireUser, buildAccessContext, jsonOk, jsonError } from '@/lib/guard';
 import { allowedCategoriesFor } from '@/lib/permissions';
 import { normalizeFa, candidateCodes, digitVariants } from '@/lib/normalize';
-import { finglishExpansion, finglishNoteForModel, dominantLanguage } from '@/lib/finglish';
+import { finglishExpansion, finglishNoteForModel, dominantLanguage, reverseExpansion } from '@/lib/finglish';
 import { snippetAround } from '@/lib/contentSearch';
 import { audit } from '@/lib/audit';
 import { chatComplete, webSearch, visionRead, gatewayCircuitOpen } from '@/lib/modelGateway';
@@ -301,24 +301,27 @@ ${(af.textContent || '').slice(0, 120000)}`,
   // --- بازیابی عمومی (وقتی محدود به سند نیستیم، جست‌وجوی سراسری مجاز) ---
   const codes = realCodes(q);
   const faQ = normalizeFa(q);
-  // فینگلیش: توکن‌های لاتینِ فارسی‌نما به معادل فارسی گسترش می‌یابند (واژه‌نامه + آوانگاری)
+  // فینگلیش: توکن‌های لاتینِ فارسی‌نما به معادل فارسی گسترش می‌یابند (واژه‌نامه + آوانگاری + غلط‌گیری)
+  // گسترش معکوس: فارسی به معادل لاتین — تا متن انگلیسی/فینگلیش داخل اسناد هم پیدا شود
   const fl = finglishExpansion(q);
   const flTokens = fl.tokens.filter((t) => !STOPWORDS.has(t));
-  const qTokens = Array.from(new Set([...questionTokens(faQ), ...flTokens])).slice(0, 14);
+  const revTokens = reverseExpansion(q).filter((t) => !STOPWORDS.has(t));
+  const qTokens = Array.from(new Set([...questionTokens(faQ), ...flTokens, ...revTokens])).slice(0, 18);
   const fieldHints = new Set<string>();
   for (const [fa, fields] of Object.entries(FIELD_SYNONYMS)) if (faQ.includes(fa)) fields.forEach((f) => fieldHints.add(f));
   const aggregateIntent = /(چند|تعداد|جمع|مجموع|میانگین|سهم|چقدر|در کل|مجموعا|chand|count|total|sum|chandta)/i.test(faQ) || flTokens.some((t) => ['چند', 'تعداد', 'جمع', 'مجموع'].includes(t));
 
-  if (!docId) {
+  // بازیابی عمومی به‌صورت تابع قابل تکرار — گذار دوم با کلیدواژه‌های بازنویسی‌شدهٔ مدل ممکن است
+  const runRetrieval = async (qTokens: string[], codes: string[]): Promise<void> => {
+    if (docId) return;
     // گسترش بازیابی عنوان: توکن‌های پرسش (با گونه‌های ارقام) + کدها و هستهٔ عددی آن‌ها
     // مثال: «ایزومتریک خط 8-C-2101-A1A» → هستهٔ «2101» در عنوان سند 210-ISO-0007 می‌خورد
     const codeNumCores = codes.flatMap((c) => c.match(/\d{3,}/g) || []);
     const titleVars = Array.from(new Set([
-      ...questionTokens(faQ).flatMap((t) => digitVariants(t).flatMap((v) => [v, v.toLowerCase()])),
-      ...flTokens,
+      ...qTokens.flatMap((t) => digitVariants(t).flatMap((v) => [v, v.toLowerCase()])),
       ...codes,
       ...codeNumCores,
-    ])).slice(0, 10);
+    ])).slice(0, 12);
     const [byNumber, byTitle, byLink, pageHits, extractionHits, mtoHits] = await Promise.all([
       codes.length
         ? db.document.findMany({ where: { ...baseDocWhere, OR: codes.map((c) => ({ docNumber: { contains: c } })) }, include: { project: { select: { code: true } }, revisions: { orderBy: { createdAt: 'desc' }, take: 1, select: { revisionCode: true, status: true } } }, take: 6 })
@@ -473,6 +476,27 @@ ${(af.textContent || '').slice(0, 120000)}`,
       const dup = citations.find((c) => c.documentId === d.id);
       if (!dup) pushCitation({ documentId: d.id, docNumber: d.docNumber, title: d.title, project: d.project.code, revision: d.revisions[0]?.revisionCode || null, revStatus: d.revisions[0]?.status || null }, null, `مرجع: ${refLabel}`);
     }
+  };
+
+  if (!docId) {
+    await runRetrieval(qTokens, codes);
+    // گذار دوم هوشمند: اگر بازیابی نخست هیچ شاهدی نیافت، مدل خودش کلیدواژه‌های جست‌وجو
+    // (مترادف فارسی/انگلیسی/فینگلیش و شکل‌های محتمل کد) را پیشنهاد می‌دهد و دوباره جست‌وجو می‌شود.
+    if (evidence.length === 0 && !gatewayCircuitOpen() && q.length >= 8) {
+      const rw = await chatComplete(
+        [
+          { role: 'system', content: 'تو بازنویس‌گر پرسش برای موتور جست‌وجوی اسناد مهندسی هستی. پرسش کاربر (فارسی/انگلیسی/فینگلیش/غلط تایپی) را به ۴ تا ۸ کلیدواژهٔ جست‌وجو تبدیل کن: مترادف‌ها، معادل فارسی/انگلیسی اصطلاحات، و شکل‌های محتمل شمارهٔ سند/Tag/خط. فقط واژه‌ها و کدها را با «،» جدا کن — بدون هیچ توضیح اضافه.' },
+          { role: 'user', content: `پرسش: ${q}\nکلیدواژه‌ها:` },
+        ],
+        { timeoutMs: 20_000, maxAttempts: 1 },
+      );
+      if (rw.ok) {
+        const kws = Array.from(new Set(rw.content.split(/[،,\n؛]+/).map((s) => s.trim()).filter((s) => s.length >= 2 && s.length <= 40))).slice(0, 10);
+        const rwCodes = realCodes(kws.join(' '));
+        const rwTokens = Array.from(new Set([...kws, ...rwCodes]));
+        if (rwTokens.length) await runRetrieval(rwTokens, rwCodes);
+      }
+    }
   }
 
   const hasPageEvidence = evidence.some((e) => e.page != null && e.snippet);
@@ -592,7 +616,7 @@ ${(af.textContent || '').slice(0, 120000)}`,
 
     const lang = dominantLanguage(q);
     const langRule = lang === 'en'
-      ? 'پرسش انگلیسی است؛ پاسخ را انگلیسی روان و درست بنویس.'
+      ? 'پرسش انگلیسی است؛ «کل» پاسخ — شامل عنوان‌ها، جدول‌ها و جمله‌بندی — باید فقط به انگلیسیِ روان و درست نوشته شود. به فارسی جواب نده.'
       : lang === 'finglish'
         ? 'پرسش فینگلیش است (فارسی با حروف لاتین)؛ پاسخ را فارسیِ روان با رسم‌الخط درست بنویس.'
         : lang === 'mixed'
@@ -602,6 +626,8 @@ ${(af.textContent || '').slice(0, 120000)}`,
     const systemPrompt = [
       'تو «دستیار هوشمند اسناد» یک مرکز اسناد و نقشه‌های پتروشیمی هستی — مدل زبانی سطح‌بالا، بسیار فهمیده، چندزبانه و دقیق.',
       'هیچ محدودیتی در نوع زبان، نوع داده یا نوع حروف نداری: فارسی، انگلیسی، دوزبانهٔ مخلوط، فینگلیش (فارسی با حروف لاتین)، اعداد فارسی/عربی/لاتین، واحدهای اندازه‌گیری، تاریخ‌های شمسی/میلادی، کدهای مهندسی و جدول‌ها — همه را می‌فهمی و درست تفسیر می‌کنی.',
+      'پرسشِ دارای غلط تایپی، فینگلیشِ غیررسمی، کوتاه‌نویسی یا ترکیب چند زبان را بی‌درنگ می‌فهمی — هدف واقعی کاربر را استخراج کن و هرگز به‌خاطر شکل نوشتار نگو «متوجه نشدم».',
+      'متخصص کامل دامنهٔ اسناد مهندسی پتروشیمی هستی (P&ID، ایزومتریک، دیتاشیت، MTO، ترنسمیتال، گردش تأیید) و هم‌زمان در گفت‌وگوی عمومی روان و طبیعی.',
       'محتوای اسناد ممکن است هر زبانی باشد؛ هر دو زبان را کاملاً می‌فهمی و هنگام نقل، اصل عبارت را دقیقاً حفظ می‌کنی.',
       'برای رسیدن به دقیق‌ترین پاسخ، پیش از پاسخ‌دادن همهٔ شواهد را کامل و تا انتها بخوان (همهٔ صفحات فایل بارگذاری‌شده، همهٔ صفحات سند، همهٔ ردیف‌های جدول)؛ سپس استنتاج کن. عجله نکن؛ دقت مطلق است.',
       'در نقلِ هر مقدار فنی، متن اصلی را عیناً و بدون تغییر بیاور (ارقام، کدها، واحدها و رسم‌الخط اصلی)؛ اگر متن انگلیسی است عین انگلیسی نقل کن و در صورت لزوم توضیح فارسی بیفزا.',

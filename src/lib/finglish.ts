@@ -76,7 +76,62 @@ export const FINGLISH_WORDS: Record<string, string[]> = {
   ba: ['با'], va: ['و'], ya: ['یا'], ta: ['تا'], ham: ['هم'], aan: ['آن'],
   inja: ['اینجا'], unja: ['آن‌جا'], alan: ['الان'], halah: ['الان'],
   bala: ['بالا'], payin: ['پایین'], chap: ['چپ'], rast: ['راست'],
+  // فعل‌ها و کنش‌ها
+  bekhun: ['بخوان'], bekhoon: ['بخوان'], khoonde: ['خوانده'], nevesht: ['نوشته'],
+  benevis: ['بنویس'], peida: ['پیدا'], nashod: ['نشد'], shod: ['شد'], mishavad: ['می‌شود'],
+  // کار و گردش اسناد
+  bazdid: ['بازدید'], tahvil: ['تحویل'], daryafti: ['دریافتی'], gharardad: ['قرارداد'],
+  contract: ['قرارداد'], peyvast: ['پیوست'], attachment: ['پیوست'], email: ['ایمیل'], imail: ['ایمیل'],
+  kelid: ['کلید'], kilid: ['کلید'], mashin: ['ماشین'], machine: ['ماشین'], dastgah: ['دستگاه'],
+  abzar: ['ابزار'], ghate: ['قطعه'], ghateat: ['قطعات'], kharabi: ['خرابی'],
+  tamir: ['تعمیر'], tamirat: ['تعمیرات'], negahdari: ['نگهداری'], roghan: ['روغن'], oil: ['روغن'],
+  bokhar: ['بخار'], steam: ['بخار'], barq: ['برق'], kargar: ['کارگر'], karmand: ['کارمند'],
+  // محیط و مفاهیم
+  hava: ['هوا'], gaz: ['گاز'], gas: ['گاز'], hazine: ['هزینه'], ghimat: ['قیمت'],
+  zaman: ['زمان'], mosbat: ['مثبت'], manfi: ['منفی'], dakhel: ['داخل'], kharej: ['خارج'],
+  birun: ['بیرون'], hamin: ['همین'], haman: ['همان'], digar: ['دیگر'], digeh: ['دیگه'],
+  baad: ['بعد'], ghabl: ['قبل'], zir: ['زیر'], rooy: ['روی'], moroor: ['مرور'],
+  // فرایند و اداری
+  estelam: ['استعلام'], sefaresh: ['سفارش'], faktor: ['فاکتور'], bebakhshid: ['ببخشید'],
+  natije: ['نتیجه'], natayej: ['نتایج'], etelaati: ['اطلاعاتی'], tasviri: ['تصویری'],
+  fani: ['فنی'], mohandesi: ['مهندسی'], sakhteman: ['ساختمان'], makan: ['مکان'], masir: ['مسیر'],
+  peymankar: ['پیمانکار'], karfarma: ['کارفرما'], taghirat: ['تغییرات'], ekhtelaf: ['اختلاف'],
+  tafavot: ['تفاوت'], moshkel: ['مشکل'], erja: ['ارجاع'], shomare: ['شماره'], safhe: ['صفحه'],
+  barge: ['برگه'], daftar: ['دفتر'], daftarche: ['دفترچه'], emza: ['امضا'], mohr: ['مهر'],
+  darust: ['درست'], dorost: ['درست'], eshtebah: ['اشتباه'], monaseb: ['مناسب'],
 };
+
+// ---------- ۱.۵) گسترش معکوس: فارسی → لاتین/فینگلیش ----------
+// اسناد مهندسی معمولاً انگلیسی‌نویسی دارند (حاشیه‌نویسی P&ID، دیتاشیت)؛ وقتی کاربر فارسی می‌پرسد،
+// معادل‌های لاتین هم وارد بازیابی می‌شوند تا متن انگلیسی/فینگلیش داخل اسناد هم پیدا شود.
+export const PERSIAN_TO_LATIN: Record<string, string[]> = {
+  'پمپ': ['pump', 'pomp'], 'شیر': ['valve', 'valv'], 'مبدل': ['exchanger', 'heat exchanger'],
+  'فلنج': ['flange'], 'لوله': ['pipe', 'piping'], 'مخزن': ['tank', 'vessel'], 'برج': ['tower', 'column'],
+  'راکتور': ['reactor'], 'بازرسی': ['inspection'], 'جوش': ['weld', 'welding'], 'خط': ['line'],
+  'برچسب': ['tag'], 'نقشه': ['drawing', 'iso'], 'ایزومتریک': ['isometric', 'iso'],
+  'دیتاشیت': ['datasheet'], 'گزارش': ['report'], 'متریال': ['material'], 'کلاس': ['class'],
+  'سایز': ['size'], 'قطر': ['diameter'], 'فشار': ['pressure'], 'دما': ['temperature'],
+  'تأیید': ['approved'], 'تایید': ['approved'], 'نسخه': ['revision', 'rev'], 'پروژه': ['project'],
+  'واحد': ['unit'], 'آزمون': ['test'], 'گسکت': ['gasket'], 'پیچ': ['bolt'], 'مهره': ['nut'],
+  'پلان': ['plot plan', 'plan'], 'چیدمان': ['layout'], 'اسپک': ['spec', 'specification'],
+  'ضخامت': ['thickness'], 'استاندارد': ['standard'], 'تعمیر': ['maintenance', 'repair'],
+  'تعمیرات': ['maintenance'], 'کالیبراسیون': ['calibration'], 'قرارداد': ['contract'],
+  'پیمانکار': ['contractor'], 'کارفرما': ['client'], 'ترنسمیتال': ['transmittal'],
+  'ام‌تی‌او': ['mto'], 'امتی‌او': ['mto'], 'پی‌اند‌آی': ['p&id', 'pid'], 'پی اف دی': ['pfd'],
+  'روغن': ['oil'], 'بخار': ['steam'], 'گاز': ['gas'], 'هوا': ['air'], 'برق': ['electrical'],
+  'سفارش': ['order', 'po'], 'فاکتور': ['invoice'], 'امضا': ['signature'], 'صفحه': ['page', 'sheet'],
+};
+
+export function reverseExpansion(question: string): string[] {
+  const toks = question.split(/[^\u0600-\u06FF\u200c]+/).map((t) => t.trim()).filter(Boolean);
+  const out = new Set<string>();
+  for (const t of toks) {
+    const base = t.replace(/(های|ها)$/u, '');
+    const m = PERSIAN_TO_LATIN[t] || PERSIAN_TO_LATIN[base];
+    if (m) m.forEach((x) => out.add(x.toLowerCase()));
+  }
+  return Array.from(out).slice(0, 12);
+}
 
 // ---------- ۲) آوانگاری قاعده‌بنیاد ----------
 const DIGRAPHS: Record<string, string[]> = {
@@ -179,6 +234,21 @@ export interface FinglishInfo {
   original: string;
 }
 
+// فاصلهٔ لِوِنشتاین ≤1 — تحمل غلط تایپی در واژه‌های فینگلیش (madarekk → madarek)
+function lev1(a: string, b: string): boolean {
+  if (a === b) return true;
+  const la = a.length, lb = b.length;
+  if (Math.abs(la - lb) > 1) return false;
+  let i = 0, j = 0, diff = 0;
+  while (i < la && j < lb) {
+    if (a[i] === b[j]) { i++; j++; continue; }
+    if (++diff > 1) return false;
+    if (la > lb) i++; else if (lb > la) j++; else { i++; j++; }
+  }
+  if (i < la || j < lb) diff++;
+  return diff <= 1;
+}
+
 export function analyzeFinglishToken(token: string): FinglishInfo {
   const t = token.trim();
   if (!looksFinglish(t)) return { isFinglish: false, persian: [], original: t };
@@ -192,6 +262,14 @@ export function analyzeFinglishToken(token: string): FinglishInfo {
       const rootDict = FINGLISH_WORDS[lower.slice(0, lower.length - s.length)];
       if (rootDict) return { isFinglish: true, persian: rootDict, original: t };
       break;
+    }
+  }
+  // تحمل غلط تایپی: نزدیک‌ترین کلید واژه‌نامه (فاصلهٔ ویرایشی ≤۱) — فقط برای توکن‌های ≥۵ نویسه
+  if (lower.length >= 5) {
+    for (const k of Object.keys(FINGLISH_WORDS)) {
+      if (Math.abs(k.length - lower.length) <= 1 && lev1(k, lower)) {
+        return { isFinglish: true, persian: FINGLISH_WORDS[k], original: t };
+      }
     }
   }
   const cands = transliterateFinglish(t);

@@ -1,6 +1,6 @@
 {
-  "score": "13/13",
-  "at": "2026-09-14T16:12:01.324Z",
+  "score": "22/22",
+  "at": "2026-09-20T09:50:49.212Z",
   "base": "http://localhost:3000",
   "results": [
     {
@@ -10,7 +10,7 @@
       "reasons": [],
       "mode": "model",
       "verification": "passed",
-      "citations": 1
+      "citations": 13
     },
     {
       "id": "title:1101-PID-0001",
@@ -19,7 +19,7 @@
       "reasons": [],
       "mode": "model",
       "verification": "passed",
-      "citations": 5
+      "citations": 15
     },
     {
       "id": "title:308B-DS-0001",
@@ -28,7 +28,7 @@
       "reasons": [],
       "mode": "model",
       "verification": "passed",
-      "citations": 1
+      "citations": 10
     },
     {
       "id": "title:1101-MTO-0001",
@@ -37,7 +37,7 @@
       "reasons": [],
       "mode": "model",
       "verification": "passed",
-      "citations": 5
+      "citations": 16
     },
     {
       "id": "title:210-PID-0001",
@@ -46,7 +46,7 @@
       "reasons": [],
       "mode": "model",
       "verification": "passed",
-      "citations": 8
+      "citations": 18
     },
     {
       "id": "title:210-ISO-0007",
@@ -55,7 +55,7 @@
       "reasons": [],
       "mode": "model",
       "verification": "passed",
-      "citations": 6
+      "citations": 18
     },
     {
       "id": "eng:1183-ISO-0001",
@@ -64,7 +64,7 @@
       "reasons": [],
       "mode": "model",
       "verification": "passed",
-      "citations": 2
+      "citations": 12
     },
     {
       "id": "eng:1101-PID-0001",
@@ -73,7 +73,7 @@
       "reasons": [],
       "mode": "model",
       "verification": "passed",
-      "citations": 1
+      "citations": 8
     },
     {
       "id": "eng:308B-DS-0001",
@@ -82,7 +82,79 @@
       "reasons": [],
       "mode": "model",
       "verification": "passed",
-      "citations": 2
+      "citations": 8
+    },
+    {
+      "id": "ext:1183-ISO-0001:TAG",
+      "group": "استخراج",
+      "pass": true,
+      "reasons": [],
+      "mode": "model",
+      "verification": "passed",
+      "citations": 16
+    },
+    {
+      "id": "ext:1183-ISO-0001:LINE",
+      "group": "استخراج",
+      "pass": true,
+      "reasons": [],
+      "mode": "model",
+      "verification": "passed",
+      "citations": 18
+    },
+    {
+      "id": "ext:1101-PID-0001:TAG",
+      "group": "استخراج",
+      "pass": true,
+      "reasons": [],
+      "mode": "model",
+      "verification": "passed",
+      "citations": 12
+    },
+    {
+      "id": "ext:308B-DS-0001:TAG",
+      "group": "استخراج",
+      "pass": true,
+      "reasons": [],
+      "mode": "model",
+      "verification": "passed",
+      "citations": 13
+    },
+    {
+      "id": "prov:6-P-1183-B2A",
+      "group": "منبع‌یابی",
+      "pass": true,
+      "reasons": [],
+      "mode": "model",
+      "verification": "passed",
+      "citations": 15
+    },
+    {
+      "id": "prov:6-P-1184-B1A",
+      "group": "منبع‌یابی",
+      "pass": true,
+      "reasons": [],
+      "mode": "model",
+      "verification": "passed",
+      "citations": 16
+    },
+    {
+      "id": "prov:8-C-2101-A1A",
+      "group": "منبع‌یابی",
+      "pass": true,
+      "reasons": [],
+      "mode": "model",
+      "verification": "warned",
+      "citations": 15
+    },
+    {
+      "id": "tag:EA-308B",
+      "group": "منبع‌یابی",
+      "pass": true,
+      "reasons": [],
+      "mode": "model",
+      "verification": "passed",
+      "citations": 10
     },
     {
       "id": "count:total",
@@ -94,13 +166,13 @@
       "citations": 0
     },
     {
-      "id": "count:proj:PRJ-BI-1403",
+      "id": "count:proj:PRJ-TEST-B2",
       "group": "شمارش",
       "pass": true,
       "reasons": [],
       "mode": "model",
       "verification": "passed",
-      "citations": 0
+      "citations": 3
     },
     {
       "id": "refuse:fabrication",
@@ -109,7 +181,16 @@
       "reasons": [],
       "mode": "model",
       "verification": "passed",
-      "citations": 0
+      "citations": 1
+    },
+    {
+      "id": "scope:1183-ISO-0001",
+      "group": "محدودهٔ سند",
+      "pass": true,
+      "reasons": [],
+      "mode": "model",
+      "verification": "passed",
+      "citations": 4
     },
     {
       "id": "multiturn:rev",
@@ -117,8 +198,8 @@
       "pass": true,
       "reasons": [],
       "mode": "model",
-      "verification": "warned",
-      "citations": 0
+      "verification": "passed",
+      "citations": 5
     }
   ]
 }
