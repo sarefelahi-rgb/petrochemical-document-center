@@ -52,16 +52,16 @@ export function LoginView({ onLoggedIn }: { onLoggedIn: (mustChange: boolean) =>
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+    <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-4">
         <div className="text-center space-y-2">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-teal-700 text-white flex items-center justify-center text-2xl font-bold">س</div>
+          <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-600 to-teal-800 text-white flex items-center justify-center text-2xl font-bold shadow-xl shadow-teal-700/30">س</div>
           <h1 className="text-2xl font-bold">مرکز هوشمند اسناد مهندسی</h1>
           <p className="text-sm text-muted-foreground">سامانه سازمانی مدیریت اسناد و نقشه‌های پتروشیمی</p>
         </div>
 
         {stage.kind === 'form' && (
-          <Card>
+          <Card className="glass-strong glass-sheen rounded-2xl">
             <CardHeader>
               <CardTitle>ورود به سامانه</CardTitle>
               <CardDescription>با حساب سازمانی خود وارد شوید.</CardDescription>
@@ -87,7 +87,7 @@ export function LoginView({ onLoggedIn }: { onLoggedIn: (mustChange: boolean) =>
         )}
 
         {stage.kind === 'mfa' && (
-          <Card>
+          <Card className="glass-strong glass-sheen rounded-2xl">
             <CardHeader>
               <CardTitle>ورود دومرحله‌ای</CardTitle>
               <CardDescription>کد ۶ رقمی اپ Authenticator را وارد کنید.</CardDescription>

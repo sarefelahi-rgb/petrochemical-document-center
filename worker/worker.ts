@@ -94,6 +94,8 @@ async function upsertPageText(fileId: string, revisionId: string | null, pg: Pag
     ocrConfidence: source === 'OCR' ? avgConf : null,
     language: source === 'OCR' ? 'fas+eng' : null,
     status: 'AUTO' as const,
+    aiPolished: false,
+    polishedAt: null,
     revisionId,
   };
   if (existing) await db.pageText.update({ where: { id: existing.id }, data });
@@ -258,7 +260,8 @@ async function jobOcr(job: Job) {
     }
     return {
       ok: true, pageCount: result.pageCount, avgConfidence: Number(result.avgConfidence.toFixed(3)),
-      emptyPages: result.emptyPages, langs: 'fas+eng',
+      emptyPages: result.emptyPages, langs: 'fas+eng', engine: result.engine,
+      passes: result.passStats.slice(0, 12),
       tools: result.toolVersions, chainNext: job.revisionId ? 'TITLE_BLOCK' : 'none',
     };
   } finally {

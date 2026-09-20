@@ -99,72 +99,76 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --radius: 0.75rem;
+  /* پالت شیشه‌ای روشن — سطح‌های نیمه‌شفاف روی بوم گرادیانی */
+  --background: oklch(0.975 0.008 210);
+  --foreground: oklch(0.2 0.02 235);
+  --card: oklch(1 0 0 / 62%);
+  --card-foreground: oklch(0.2 0.02 235);
+  --popover: oklch(1 0 0 / 80%);
+  --popover-foreground: oklch(0.2 0.02 235);
+  --primary: oklch(0.53 0.095 190);
+  --primary-foreground: oklch(0.99 0.005 190);
+  --secondary: oklch(0.955 0.012 205 / 82%);
+  --secondary-foreground: oklch(0.25 0.03 230);
+  --muted: oklch(0.955 0.012 210 / 70%);
+  --muted-foreground: oklch(0.48 0.025 220);
+  --accent: oklch(0.94 0.02 195 / 75%);
+  --accent-foreground: oklch(0.3 0.04 220);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: oklch(0.55 0.03 215 / 16%);
+  --input: oklch(0.55 0.03 215 / 20%);
+  --ring: oklch(0.53 0.095 190 / 55%);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: oklch(1 0 0 / 55%);
+  --sidebar-foreground: oklch(0.2 0.02 235);
+  --sidebar-primary: oklch(0.53 0.095 190);
+  --sidebar-primary-foreground: oklch(0.99 0.005 190);
+  --sidebar-accent: oklch(0.94 0.02 195 / 75%);
+  --sidebar-accent-foreground: oklch(0.3 0.04 220);
+  --sidebar-border: oklch(0.55 0.03 215 / 16%);
+  --sidebar-ring: oklch(0.53 0.095 190 / 55%);
+  --glass-blur: 18px;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  /* پالت شیشه‌ای تیره — لاجورد عمیق با بازتاب‌های سبزآبی */
+  --background: oklch(0.18 0.025 240);
+  --foreground: oklch(0.96 0.008 210);
+  --card: oklch(0.32 0.03 235 / 40%);
+  --card-foreground: oklch(0.96 0.008 210);
+  --popover: oklch(0.25 0.03 235 / 88%);
+  --popover-foreground: oklch(0.96 0.008 210);
+  --primary: oklch(0.74 0.11 185);
+  --primary-foreground: oklch(0.16 0.025 235);
+  --secondary: oklch(0.28 0.03 235 / 70%);
+  --secondary-foreground: oklch(0.96 0.008 210);
+  --muted: oklch(0.28 0.03 235 / 55%);
+  --muted-foreground: oklch(0.72 0.02 220);
+  --accent: oklch(0.32 0.04 200 / 70%);
+  --accent-foreground: oklch(0.96 0.008 210);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --border: oklch(0.85 0.02 210 / 14%);
+  --input: oklch(0.85 0.02 210 / 18%);
+  --ring: oklch(0.74 0.11 185 / 50%);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar: oklch(0.3 0.03 235 / 35%);
+  --sidebar-foreground: oklch(0.96 0.008 210);
+  --sidebar-primary: oklch(0.74 0.11 185);
+  --sidebar-primary-foreground: oklch(0.16 0.025 235);
+  --sidebar-accent: oklch(0.32 0.04 200 / 70%);
+  --sidebar-accent-foreground: oklch(0.96 0.008 210);
+  --sidebar-border: oklch(0.85 0.02 210 / 14%);
+  --sidebar-ring: oklch(0.74 0.11 185 / 50%);
+  --glass-blur: 20px;
 }
 
 @layer base {
@@ -175,6 +179,35 @@
     @apply bg-background text-foreground;
     /* لاتین ← Carlito، فارسی ← Vazirmatn (رسم‌الخط هر زبان) */
     font-family: 'Carlito', 'Vazirmatn', Tahoma, 'Segoe UI', 'Noto Sans Arabic', sans-serif;
+    /* بوم شیشه‌ای: گرادیان ثابت + هاله‌های رنگی نرم (شیشه روی نور) */
+    background-image:
+      radial-gradient(1100px 560px at 88% -12%, oklch(0.82 0.09 190 / 30%), transparent 62%),
+      radial-gradient(900px 520px at -12% 28%, oklch(0.86 0.075 165 / 26%), transparent 58%),
+      radial-gradient(760px 520px at 50% 112%, oklch(0.88 0.06 95 / 18%), transparent 62%),
+      linear-gradient(180deg, oklch(0.988 0.004 210), oklch(0.955 0.012 218));
+    background-attachment: fixed;
+  }
+  .dark body {
+    color-scheme: dark;
+    background-image:
+      radial-gradient(1100px 560px at 88% -12%, oklch(0.5 0.09 190 / 22%), transparent 62%),
+      radial-gradient(900px 520px at -12% 30%, oklch(0.45 0.08 265 / 16%), transparent 58%),
+      radial-gradient(760px 520px at 50% 112%, oklch(0.5 0.07 175 / 12%), transparent 62%),
+      linear-gradient(180deg, oklch(0.2 0.028 240), oklch(0.16 0.025 242));
+  }
+  /* سطح‌های شیشه‌ای سراسری: کارت‌ها، دیالوگ‌ها و پاپ‌اورها مات و شفاف می‌شوند */
+  [data-slot='card'],
+  [data-slot='dialog-content'],
+  [data-slot='popover-content'],
+  [data-slot='sheet-content'] {
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.35);
+  }
+  .dark [data-slot='card'],
+  .dark [data-slot='dialog-content'],
+  .dark [data-slot='popover-content'],
+  .dark [data-slot='sheet-content'] {
+    box-shadow: 0 12px 40px oklch(0.05 0.02 240 / 0.35);
   }
   /* کدهای مهندسی همیشه چپ‌به‌راست و با قلم ثابت عرض */
   .code-ltr {
@@ -200,9 +233,6 @@
      (پاراگراف فارسی راست‌چین، پاراگراف انگلیسی چپ‌چین — حتی در یک متن) */
   .bidi-auto {
     unicode-bidi: plaintext;
-  }
-  .dark body {
-    color-scheme: dark;
   }
   /* کنتراست و فوکوس صفحه‌کلید */
   :focus-visible {
@@ -238,6 +268,59 @@
 /* اسکرول‌بار نازک برای فهرست‌های طولانی */
 .thin-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
 .thin-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+
+/* ---------- کلاس‌های شیشه‌ای (Glassmorphism) ---------- */
+/* پنل شیشه‌ای عمومی — برای پوسته، ساید‌بار و حباب‌های چت */
+.glass {
+  background: var(--card);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px oklch(0.35 0.04 230 / 0.07);
+}
+.dark .glass {
+  box-shadow: 0 10px 36px oklch(0.05 0.02 240 / 0.4);
+}
+/* شیشهٔ غلیظ‌تر — هدر چسبان و ورودی اصلی چت */
+.glass-strong {
+  background: var(--popover);
+  backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(1.5);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 8px)) saturate(1.5);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 36px oklch(0.35 0.04 230 / 0.09);
+}
+/* درخشش لبهٔ بالای پنل شیشه‌ای (نور محیطی) */
+.glass-sheen { position: relative; overflow: hidden; }
+.glass-sheen::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 55%), transparent);
+  pointer-events: none;
+}
+.dark .glass-sheen::before { background: linear-gradient(90deg, transparent, oklch(1 0 0 / 18%), transparent); }
+/* ورودی شیشه‌ای چت: حباب پیام کاربر */
+.bubble-user {
+  background: linear-gradient(135deg, oklch(0.5 0.1 192), oklch(0.44 0.09 205));
+  color: oklch(0.99 0.005 190);
+  box-shadow: 0 6px 22px oklch(0.5 0.1 192 / 0.35);
+}
+.dark .bubble-user {
+  background: linear-gradient(135deg, oklch(0.55 0.1 192), oklch(0.46 0.09 210));
+}
+/* نشان‌های وضعیت شیشه‌ای */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 9999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 11px;
+  background: var(--accent);
+  border: 1px solid var(--border);
+  color: var(--accent-foreground);
+}
 
 /* لایهٔ متن pdf.js — انتخاب متن روی بوم نمایشگر (مرحله B) */
 .pdfTextLayer {

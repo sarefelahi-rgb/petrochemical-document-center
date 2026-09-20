@@ -55,6 +55,8 @@ model User {
   docApprovals       DocApproval[]      @relation("DocApprovals") // تأییدهای محول‌شده
   assistantFiles     AssistantFile[]    // فایل‌های بارگذاری‌شده در گفت‌وگوی دستیار
   intakeUploads      IntakeItem[]       @relation("IntakeUploader") // اسناد ارسالی در پذیرش هوشمند
+  feedbacks          AssistantFeedback[] // بازخوردهای ثبت‌شدهٔ کاربر
+  learnedEntries     LearnedKnowledge[] // دانش‌های آموخته‌شده‌ای که ثبت کرده
 }
 
 // شناسه عملیات آپلود — یکتا سمت کلاینت، مانع ثبت تکراری در retry
@@ -357,6 +359,8 @@ model PageText {
   ocrConfidence  Float?  // میانگین اطمینان OCR — «دقت اثبات‌شده نیست»
   language       String? // fas+eng
   status         String  @default("AUTO") // AUTO | REVIEWED — پردازش مجدد REVIEWED را بازنویسی نمی‌کند
+  aiPolished     Boolean @default(false) // متن با اصلاح هوشمند مدل (رفع خطاهای OCR) بهبود یافته است
+  polishedAt     DateTime?
   createdAt      DateTime @default(now())
   @@unique([fileId, pageNumber])
 }
@@ -599,5 +603,46 @@ model AssistantMessage {
   role          String  // USER | ASSISTANT
   content       String
   citations     String? // JSON ارجاع به سند/نسخه — فقط اسناد مجاز
+  feedback      AssistantFeedback[] // بازخورد کاربر روی این پاسخ
   createdAt     DateTime @default(now())
+}
+
+// بازخورد کاربر روی پاسخ دستیار — سوخت یادگیری مداوم سامانه
+model AssistantFeedback {
+  id             String   @id @default(cuid())
+  messageId      String
+  message        AssistantMessage @relation(fields: [messageId], references: [id])
+  conversationId String
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  organizationId String
+  rating         String   // UP | DOWN
+  comment        String?  // توضیح کاربر (چرا پاسخ خوب/بد بود)
+  expectedAnswer String?  // پاسخ درست از دید کاربر (برای ردفع) — منبع یادگیری
+  question       String?  // عین پرسش کاربر پیش از این پاسخ
+  answerSnapshot String?  // خلاصهٔ پاسخ داده‌شده (برای تحلیل کیفیت)
+  createdAt      DateTime @default(now())
+  @@unique([messageId, userId])
+  @@index([organizationId, createdAt])
+}
+
+// حافظهٔ یادگیرندهٔ سامانه — از بازخوردها و تصحیح‌های کاربران آموخته می‌شود
+// و در پاسخ‌های بعدی به‌عنوان دانش با اولویت بالا تزریق می‌شود
+model LearnedKnowledge {
+  id             String   @id @default(cuid())
+  organizationId String
+  question       String   // پرسش/الگوی آموخته‌شده (نرمال‌شده)
+  keywords       String?  // کلیدواژه‌های بازیابی (نرمال + فینگلیش)
+  answer         String   // پاسخ آموخته‌شده / پاسخ درست
+  source         String   @default("FEEDBACK") // FEEDBACK_UP | CORRECTION | MANUAL
+  weight         Float    @default(1.0) // وزن اثرگذاری (با بازخوردهای بعدی تعدیل می‌شود)
+  useCount       Int      @default(0) // چند بار در پاسخ‌ها به کار رفته
+  upvotes        Int      @default(0)
+  downvotes      Int      @default(0)
+  active         Boolean  @default(true)
+  createdById    String?
+  createdBy      User?    @relation(fields: [createdById], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([organizationId, active])
 }

@@ -20,6 +20,7 @@ import { snippetAround } from '@/lib/contentSearch';
 import { audit } from '@/lib/audit';
 import { chatComplete, webSearch, visionRead, gatewayCircuitOpen } from '@/lib/modelGateway';
 import { readObject } from '@/lib/storage';
+import { getLearnedEntries, getDocBoosts, markLearnedUsed } from '@/lib/learning';
 
 export const maxDuration = 150;
 
@@ -311,6 +312,14 @@ ${(af.textContent || '').slice(0, 120000)}`,
   for (const [fa, fields] of Object.entries(FIELD_SYNONYMS)) if (faQ.includes(fa)) fields.forEach((f) => fieldHints.add(f));
   const aggregateIntent = /(چند|تعداد|جمع|مجموع|میانگین|سهم|چقدر|در کل|مجموعا|chand|count|total|sum|chandta)/i.test(faQ) || flTokens.some((t) => ['چند', 'تعداد', 'جمع', 'مجموع'].includes(t));
 
+  // --- یادگیرندهٔ سامانه: دانش آموخته‌شده از بازخوردها + بوست تطبیقی اسناد از بازخوردها ---
+  // دستیار با هر 👍/👎 کاربران دقیق‌تر می‌شود: پاسخ‌های تأییدشده الگویاد می‌گیرند و
+  // اسناد مفید در بازیابی بعدی تقویت می‌شوند.
+  const [learnedEntries, docBoosts] = await Promise.all([
+    getLearnedEntries(ctx.organizationId, q),
+    getDocBoosts(ctx.organizationId),
+  ]);
+
   // بازیابی عمومی به‌صورت تابع قابل تکرار — گذار دوم با کلیدواژه‌های بازنویسی‌شدهٔ مدل ممکن است
   const runRetrieval = async (qTokens: string[], codes: string[]): Promise<void> => {
     if (docId) return;
@@ -402,6 +411,9 @@ ${(af.textContent || '').slice(0, 120000)}`,
         for (const c of codes) if (norm.includes(c.toLowerCase())) score += 4;
         const phraseHit = phraseForRank ? norm.includes(phraseForRank) : false;
         if (phraseHit) score += 8;
+        // بوست یادگیرنده: اسنادی که پاسخ‌های مفید دادند (👍) تقویت، ناکارآمد (👎) تضعیف می‌شوند
+        const boost = docBoosts.get(pt.file.revision?.document?.id || '') || 0;
+        score += boost;
         return { pt, score, needle: phraseHit ? phraseForRank : bestTok };
       })
       .filter((s) => s.score > 0)
@@ -421,8 +433,8 @@ ${(af.textContent || '').slice(0, 120000)}`,
         snippet.slice(0, 1600),
       );
     }
-    // ۲) اسناد بر اساس شماره سند — با شناسنامهٔ کامل (وضعیت مهندسی/پردازش/رشته/نوع)
-    for (const d of byNumber.slice(0, 5)) {
+    // ۱) اسناد بر اساس شماره سند — با بوست یادگیرنده (اسناد مفید اول) + شناسنامهٔ کامل
+    for (const d of [...byNumber].sort((a, b) => (docBoosts.get(b.id) || 0) - (docBoosts.get(a.id) || 0)).slice(0, 5)) {
       const r0 = d.revisions[0];
       pushCitation(
         { documentId: d.id, docNumber: d.docNumber, title: d.title, project: d.project.code, revision: r0?.revisionCode || null, revStatus: r0?.status || null },
@@ -645,6 +657,7 @@ ${(af.textContent || '').slice(0, 120000)}`,
       '۹) هیچ عدد، شماره سند، کد یا مقدار فنی از حافظهٔ خودت نساز؛ اگر در شواهد یا آمار نیست، صریح بنویس «در اسناد مجاز موجود یافت نشد».',
       '۱۰) فایل‌های بارگذاری‌شدهٔ کاربر با برچسب «فایل بارگذاری‌شده» در شواهد هستند؛ دربارهٔ محتوای آن‌ها مثل یک سند با استناد [E#] رفتار کن و «تمام» محتوای آن‌ها — هر زبانی که باشد — را می‌خوانی و به هر بخش از فایل ارجاع می‌دهی.',
       '۱۱) اگر پرسش یا محتوا فینگلیش بود، آن را به فارسی درست برگردان و بر همان اساس پاسخ بده؛ متن انگلیسیِ داخل اسناد را ترجمهٔ آزاد فارسی بده مگر آنکه نقل دقیق لازم باشد.',
+      '۱۲) بخش «دانش آموخته‌شدهٔ سامانه» تجربهٔ تأییدشده از بازخورد واقعی کاربران است — به آن وزن بالا بده (سبک پاسخ، ترجیح قالب، اصطلاحات سازمان و شکل پاسخ‌های پیشین مطلوب) اما ادعای فنی جدید از آن نساز؛ در تعارض، شواهد اسناد ملاک است و تفاوت را شفاف بگو.',
     ].join('\n');
 
     const scopeLine = scopeNote ? `محدوده: ${scopeNote}\n` : '';
@@ -662,10 +675,15 @@ ${(af.textContent || '').slice(0, 120000)}`,
     const wantsDeep = Boolean(docId || assistantFileId || aggregateIntent || codes.length > 0 || fl.hasFinglish || q.length >= 60 || deepIntent);
     const deepNote = wantsDeep ? '\n(حالت تفکر عمیق فعال است — پیش از پاسخ، همهٔ شواهد را کامل تحلیل کن)' : '';
 
+    // بلوک دانش آموخته‌شده — حافظهٔ یادگیرندهٔ سامانه از بازخوردهای کاربران
+    const learnedBlock = learnedEntries.length
+      ? `\n\nدانش آموخته‌شدهٔ سامانه از بازخورد کاربران (اولویت بالا):\n${learnedEntries.map((l, i) => `[L${i + 1}] پرسش: ${l.question}\nپاسخ آموخته‌شده: ${l.answer.slice(0, 1200)}`).join('\n---\n')}\nاگر این دانش با شواهد سازگار است، از الگو و ترجیحات آن پیروی کن؛ در تعارض، شواهد اسناد ملاک است.`
+      : '';
+
     const result = await chatComplete(
       [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: `${historyTurns}${scopeLine}${flLine}${visionLine}${webLine}شواهد بازیابی‌شده از اسناد مجاز کاربر:\n${evidenceBlock}${statsBlock}${webBlock}\n\nپرسش کاربر: ${q}${deepNote}` },
+        { role: 'user', content: `${historyTurns}${scopeLine}${flLine}${visionLine}${webLine}${learnedBlock}\n\nشواهد بازیابی‌شده از اسناد مجاز کاربر:\n${evidenceBlock}${statsBlock}${webBlock}\n\nپرسش کاربر: ${q}${deepNote}` },
       ],
       { timeoutMs: 120_000, maxAttempts: 3, thinking: wantsDeep },
     );
@@ -700,6 +718,8 @@ ${(af.textContent || '').slice(0, 120000)}`,
     if (result.ok) {
       answer = cleanRefs(result.content).trim();
       mode = 'model';
+      // یادگیرنده: دانش‌های به‌کاررفته علامت می‌خورند تا آمار یادگیری بالا برود
+      if (learnedEntries.length) markLearnedUsed(learnedEntries.map((l) => l.id)).catch(() => {});
       let unsupported = hardClaims(answer);
       verification = unsupported.length === 0 ? 'passed' : 'warned';
       if (unsupported.length > 0 && evidence.length) {
@@ -740,16 +760,17 @@ ${(af.textContent || '').slice(0, 120000)}`,
 
   await audit({ organizationId: ctx.organizationId, actorId: auth.user.id, actorName: auth.user.fullName, action: 'ASSISTANT_QUERY', detail: `mode=${mode} verif=${verification} citations=${citations.length} web=${webEvidence.length} docId=${docId ? 'yes' : 'no'} vision=${visionPage || 'no'}` });
 
-  // ذخیرهٔ پاسخ در گفتگو (شامل شواهد وب برای نمایش مجدد)
+  // ذخیرهٔ پاسخ در گفتگو (شامل شواهد وب برای نمایش مجدد) — شناسهٔ پیام برای بازخورد/یادگیری برگردانده می‌شود
   const citationsForSave = [
     ...citations.map(({ snippet, ...rest }) => ({ ...rest, snippet: snippet ? snippet.slice(0, 160) : null })),
     ...webEvidence.map((w) => ({ documentId: '', docNumber: '', title: w.title, project: '', revision: null, revStatus: null, page: null, snippet: w.snippet?.slice(0, 160) || null, source: 'web' as const, url: w.url })),
   ];
-  await db.assistantMessage.create({
+  const savedMsg = await db.assistantMessage.create({
     data: { conversationId: conv.id, role: 'ASSISTANT', content: answer, citations: JSON.stringify(citationsForSave) },
+    select: { id: true },
   });
 
-  return jsonOk({ conversationId: conv.id, answer, mode, verification, citations: citationsForSave, modelAvailable });
+  return jsonOk({ conversationId: conv.id, messageId: savedMsg.id, answer, mode, verification, citations: citationsForSave, modelAvailable, learned: learnedEntries.length > 0, learnedCount: learnedEntries.length });
 }
 
 // راهنمای نوع‌ها برای برچسب‌ها (فعلاً استفادهٔ داخلی)

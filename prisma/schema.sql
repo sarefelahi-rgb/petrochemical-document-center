@@ -296,6 +296,8 @@ CREATE TABLE "PageText" (
     "ocrConfidence" REAL,
     "language" TEXT,
     "status" TEXT NOT NULL DEFAULT 'AUTO',
+    "aiPolished" BOOLEAN NOT NULL DEFAULT false,
+    "polishedAt" DATETIME,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "PageText_fileId_fkey" FOREIGN KEY ("fileId") REFERENCES "FileObject" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
@@ -525,6 +527,42 @@ CREATE TABLE "AssistantMessage" (
     CONSTRAINT "AssistantMessage_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "Conversation" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
+-- CreateTable
+CREATE TABLE "AssistantFeedback" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "messageId" TEXT NOT NULL,
+    "conversationId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "rating" TEXT NOT NULL,
+    "comment" TEXT,
+    "expectedAnswer" TEXT,
+    "question" TEXT,
+    "answerSnapshot" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "AssistantFeedback_messageId_fkey" FOREIGN KEY ("messageId") REFERENCES "AssistantMessage" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "AssistantFeedback_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "LearnedKnowledge" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "organizationId" TEXT NOT NULL,
+    "question" TEXT NOT NULL,
+    "keywords" TEXT,
+    "answer" TEXT NOT NULL,
+    "source" TEXT NOT NULL DEFAULT 'FEEDBACK',
+    "weight" REAL NOT NULL DEFAULT 1.0,
+    "useCount" INTEGER NOT NULL DEFAULT 0,
+    "upvotes" INTEGER NOT NULL DEFAULT 0,
+    "downvotes" INTEGER NOT NULL DEFAULT 0,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "createdById" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "LearnedKnowledge_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_username_key" ON "User"("username");
 
@@ -620,4 +658,13 @@ CREATE INDEX "AuditEvent_at_idx" ON "AuditEvent"("at");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Vocabulary_domain_code_key" ON "Vocabulary"("domain", "code");
+
+-- CreateIndex
+CREATE INDEX "AssistantFeedback_organizationId_createdAt_idx" ON "AssistantFeedback"("organizationId", "createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AssistantFeedback_messageId_userId_key" ON "AssistantFeedback"("messageId", "userId");
+
+-- CreateIndex
+CREATE INDEX "LearnedKnowledge_organizationId_active_idx" ON "LearnedKnowledge"("organizationId", "active");
 

@@ -33,7 +33,7 @@ export function HomeView({ userName, go }: { userName: string; go: (view: string
 
   return (
     <div className="space-y-6" data-testid="home-view">
-      <div>
+      <div className="rounded-2xl glass glass-sheen p-6">
         <h1 className="text-xl font-bold">سلام، <span dir="auto">{userName}</span></h1>
         <p className="text-sm text-muted-foreground mt-1">سه اقدام اصلی — از خانه تا نتیجه حداکثر سه گام</p>
       </div>
@@ -44,10 +44,10 @@ export function HomeView({ userName, go }: { userName: string; go: (view: string
           <button
             key={a.key}
             onClick={() => go(a.key)}
-            className="group text-right rounded-xl border bg-card p-6 transition-all hover:border-teal-600 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring"
+            className="group text-right rounded-2xl glass glass-sheen p-6 transition-all hover:shadow-lg hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <a.icon className="h-8 w-8 text-teal-700 dark:text-teal-400 mb-3" aria-hidden />
-            <div className="font-bold group-hover:text-teal-700 dark:group-hover:text-teal-400">{a.title}</div>
+            <a.icon className="h-8 w-8 text-primary mb-3" aria-hidden />
+            <div className="font-bold group-hover:text-primary">{a.title}</div>
             <div className="text-sm text-muted-foreground mt-1">{a.desc}</div>
           </button>
         ))}

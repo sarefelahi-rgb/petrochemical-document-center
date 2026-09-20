@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Download, Eye, Star, ArrowRight, ShieldCheck, FileQuestion, RefreshCw, Loader2, FolderOpen, Bot } from 'lucide-react';
+import { Download, Eye, Star, ArrowRight, ShieldCheck, FileQuestion, RefreshCw, Loader2, FolderOpen, Bot, Sparkles } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { api, fmtJalali, fmtSize, STATUS_LABELS, CONF_LABELS, PROC_LABELS } from './api';
 import { StatusBadge, ConfBadge, RevBadge, SampleBadge } from './badges';
@@ -101,6 +101,20 @@ export function DocumentDetail({ docId, go, openPageTarget }: { docId: string; g
     try {
       const r = await api<{ note: string }>(`/api/files/${fileId}/reprocess`, { method: 'POST' });
       toast({ title: 'بازپردازش در صف قرار گرفت', description: r.note });
+      load();
+    } catch (e) {
+      toast({ title: 'خطا', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setReprocessing(null);
+    }
+  }
+
+  // اصلاح هوشمند متن OCR — مدل زبانی خطاهای خوانش را اصلاح می‌کند (دقت جست‌وجو/دستیار بالاتر)
+  async function aiPolish(fileId: string) {
+    setReprocessing(fileId);
+    try {
+      const r = await api<{ polished: number; message: string }>(`/api/files/${fileId}/ai-polish`, { method: 'POST' });
+      toast({ title: r.polished > 0 ? 'متن OCR ارتقا یافت' : 'اصلاح هوشمند', description: r.message });
       load();
     } catch (e) {
       toast({ title: 'خطا', description: (e as Error).message, variant: 'destructive' });
@@ -253,9 +267,14 @@ export function DocumentDetail({ docId, go, openPageTarget }: { docId: string; g
                       <Download className="h-4 w-4" /> دانلود
                     </Button>
                     {canEdit && (f.mimeType === 'application/pdf' || f.mimeType.startsWith('image/')) && (
-                      <Button size="sm" variant="ghost" disabled={reprocessing === f.id} onClick={() => reprocess(f.id)} title="پردازش مجدد — مقادیر تأییدشده حفظ می‌شود">
-                        {reprocessing === f.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} بازپردازش
-                      </Button>
+                      <span className="contents">
+                        <Button size="sm" variant="ghost" disabled={reprocessing === f.id} onClick={() => reprocess(f.id)} title="پردازش مجدد — مقادیر تأییدشده حفظ می‌شود">
+                          {reprocessing === f.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} بازپردازش
+                        </Button>
+                        <Button size="sm" variant="ghost" disabled={reprocessing === f.id} onClick={() => aiPolish(f.id)} title="اصلاح هوشمند خطاهای OCR با مدل زبانی — دقت متن و جست‌وجو بالاتر می‌رود">
+                          {reprocessing === f.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-primary" />} اصلاح هوشمند متن
+                        </Button>
+                      </span>
                     )}
                   </div>
                 </div>

@@ -1,11 +1,12 @@
 'use client';
-// پوستهٔ برنامه — ناوبری اصلی + هدر + زمینه روشن/تیره + تغییر اجباری رمز اولین ورود
+// پوستهٔ برنامه — هدر شیشه‌ای + ناوبری گروهی مینیمال + زمینهٔ روشن/تیره + تغییر اجباری رمز
+// اصل طراحی: «ساده ولی حرفه‌ای» — دستیار در رأس، بقیه در سه خوشهٔ معنایی روشن
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Home, FolderOpen, Upload, Bot, ClipboardList, BarChart3, Settings, LogOut, Moon, Sun, KeyRound, ScanSearch, FolderSearch, FileStack, Inbox } from 'lucide-react';
+import { Home, FolderOpen, Bot, ClipboardList, BarChart3, Settings, LogOut, Moon, Sun, KeyRound, ScanSearch, FolderSearch, FileStack, Inbox } from 'lucide-react';
 import { api, ROLE_LABELS } from './api';
 import { HomeView } from './home-view';
 import { DocumentCenter } from './document-center';
@@ -26,16 +27,23 @@ export interface MeInfo {
   projectCount: number;
 }
 
-const NAV = [
-  { key: 'assistant', label: 'دستیار هوشمند', icon: Bot },
-  { key: 'home', label: 'خانه', icon: Home },
-  { key: 'documents', label: 'مرکز اسناد', icon: FolderOpen },
-  { key: 'intake', label: 'پذیرش اسناد', icon: Inbox },
-  { key: 'dossier', label: 'پروندهٔ تجهیز', icon: FolderSearch },
-  { key: 'doc-control', label: 'کنترل مدارک', icon: FileStack },
-  { key: 'cartable', label: 'کارتابل', icon: ClipboardList },
-  { key: 'review-queue', label: 'صف بازبینی', icon: ScanSearch },
-  { key: 'reports', label: 'گزارش‌ها', icon: BarChart3 },
+// ناوبری گروهی — ۹ گزینه پراکنده → ۳ خوشهٔ معنایی ساده + دستیار در رأس
+const NAV_GROUPS: Array<{ caption: string | null; items: Array<{ key: string; label: string; icon: React.ComponentType<{ className?: string }> }> }> = [
+  { caption: null, items: [
+    { key: 'assistant', label: 'دستیار هوشمند', icon: Bot },
+    { key: 'documents', label: 'مرکز اسناد', icon: FolderOpen },
+  ] },
+  { caption: 'گردش کار', items: [
+    { key: 'cartable', label: 'کارتابل', icon: ClipboardList },
+    { key: 'review-queue', label: 'صف بازبینی', icon: ScanSearch },
+    { key: 'doc-control', label: 'کنترل مدارک', icon: FileStack },
+  ] },
+  { caption: 'سازمان', items: [
+    { key: 'intake', label: 'پذیرش اسناد', icon: Inbox },
+    { key: 'dossier', label: 'پروندهٔ تجهیز', icon: FolderSearch },
+    { key: 'reports', label: 'گزارش‌ها', icon: BarChart3 },
+    { key: 'home', label: 'نمای کلی', icon: Home },
+  ] },
 ];
 
 export function AppShell({ me, onLogout, goHome }: { me: MeInfo; onLogout: () => void; goHome: () => void }) {
@@ -107,26 +115,38 @@ export function AppShell({ me, onLogout, goHome }: { me: MeInfo; onLogout: () =>
   }
 
   const isAdmin = me.user.role === 'ADMIN';
+  const isAct = (key: string) => view === key || (key === 'documents' && view === 'document');
+
+  const navBtn = (key: string, label: string, Icon: React.ComponentType<{ className?: string }>) => (
+    <button
+      key={key}
+      onClick={() => go(key)}
+      className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-all ${isAct(key) ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25' : 'hover:bg-accent/80 text-foreground/85'}`}
+      aria-current={isAct(key) ? 'page' : undefined}
+    >
+      <Icon className="h-4 w-4 shrink-0" /> {label}
+    </button>
+  );
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* هدر */}
-      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <div className="min-h-screen flex flex-col">
+      {/* هدر شیشه‌ای شناور */}
+      <header className="sticky top-0 z-40 glass-strong glass-sheen border-b">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <button onClick={() => go('assistant')} className="flex items-center gap-2 min-w-0" title="صفحهٔ اول: دستیار هوشمند">
-              <span className="w-8 h-8 rounded-lg bg-teal-700 text-white flex items-center justify-center text-sm font-bold shrink-0">س</span>
+            <button onClick={() => go('assistant')} className="flex items-center gap-2.5 min-w-0" title="صفحهٔ اول: دستیار هوشمند">
+              <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-teal-600 to-teal-800 text-white flex items-center justify-center text-sm font-bold shrink-0 shadow-md shadow-teal-700/30">س</span>
               <span className="font-bold truncate">{appName}</span>
             </button>
             <span className="hidden md:inline text-xs text-muted-foreground truncate">— {me.orgName}</span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={dark ? 'زمینه روشن' : 'زمینه تیره'}>
               {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
             <Button variant="ghost" size="icon" onClick={() => setPwOpen(true)} aria-label="تغییر رمز"><KeyRound className="h-4 w-4" /></Button>
             <Button variant="ghost" size="icon" onClick={onLogout} aria-label="خروج"><LogOut className="h-4 w-4" /></Button>
-            <div className="text-xs text-left hidden sm:block">
+            <div className="text-xs text-left hidden sm:block pr-1">
               <div dir="auto" className="font-medium leading-4">{me.user.fullName}</div>
               <div className="text-muted-foreground">{ROLE_LABELS[me.user.role] || me.user.role}</div>
             </div>
@@ -134,26 +154,22 @@ export function AppShell({ me, onLogout, goHome }: { me: MeInfo; onLogout: () =>
         </div>
       </header>
 
-      <div className="flex-1 w-full max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row gap-6">
-        {/* ناوبری کناری */}
-        <nav className="md:w-52 shrink-0 flex md:flex-col gap-1.5 md:gap-0 md:space-y-1 overflow-x-auto md:overflow-visible -mx-4 px-4 md:mx-0 md:px-0 pb-1 md:pb-0" aria-label="منوی اصلی">
-          {NAV.map((n) => (
-            <button
-              key={n.key}
-              onClick={() => go(n.key)}
-              className={`w-auto md:w-full shrink-0 md:shrink whitespace-nowrap md:whitespace-normal flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${view === n.key || (n.key === 'documents' && view === 'document') ? 'bg-teal-700 text-white' : 'hover:bg-accent'}`}
-              aria-current={view === n.key ? 'page' : undefined}
-            >
-              <n.icon className="h-4 w-4 shrink-0" /> {n.label}
-            </button>
+      <div className="flex-1 w-full max-w-7xl mx-auto px-4 py-5 flex flex-col md:flex-row gap-4 md:gap-6">
+        {/* ناوبری کناری شیشه‌ای — سه خوشهٔ ساده */}
+        <nav
+          className="md:w-56 shrink-0 flex md:flex-col gap-1 overflow-x-auto md:overflow-visible md:sticky md:top-[4.5rem] md:self-start rounded-2xl glass glass-sheen p-2"
+          aria-label="منوی اصلی"
+        >
+          {NAV_GROUPS.map((g, gi) => (
+            <div key={gi} className={`flex md:flex-col gap-1 shrink-0 md:shrink ${gi > 0 ? 'md:mt-1 md:pt-2 md:border-t border-border/60' : ''}`}>
+              {g.caption && <span className="hidden md:block px-3 pt-1.5 pb-1 text-[10px] font-semibold tracking-wide text-muted-foreground/80">{g.caption}</span>}
+              {g.items.map((n) => navBtn(n.key, n.label, n.icon))}
+            </div>
           ))}
           {isAdmin && (
-            <button
-              onClick={() => go('admin')}
-              className={`w-auto md:w-full shrink-0 md:shrink whitespace-nowrap md:whitespace-normal flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${view === 'admin' ? 'bg-teal-700 text-white' : 'hover:bg-accent'}`}
-            >
-              <Settings className="h-4 w-4 shrink-0" /> مدیریت
-            </button>
+            <div className="flex md:flex-col gap-1 shrink-0 md:shrink md:mt-1 md:pt-2 md:border-t border-border/60">
+              {navBtn('admin', 'مدیریت', Settings)}
+            </div>
           )}
         </nav>
 
@@ -175,10 +191,10 @@ export function AppShell({ me, onLogout, goHome }: { me: MeInfo; onLogout: () =>
         </main>
       </div>
 
-      <footer className="border-t mt-auto">
-        <div className="max-w-7xl mx-auto px-4 py-3 text-xs text-muted-foreground flex flex-wrap justify-between gap-2">
-          <span>{appName} — سامانهٔ مدیریت اسناد و نقشه‌های پتروشیمی</span>
-          <span>دستیار هوشمند، MTO، گردش تأیید و کنترل مدارک فعال است — وضعیت کامل در «گزارش‌ها»</span>
+      <footer className="mt-auto">
+        <div className="max-w-7xl mx-auto px-4 py-3 text-[11px] text-muted-foreground flex flex-wrap justify-between gap-2">
+          <span>{appName} — مدیریت اسناد و نقشه‌های پتروشیمی</span>
+          <span>دستیار یادگیرنده · OCR چندگذره · گردش تأیید · کنترل مدارک</span>
         </div>
       </footer>
 

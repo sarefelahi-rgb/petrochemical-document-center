@@ -6,11 +6,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Markdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Label } from '@/components/ui/label';
 import {
   SendHorizonal, MessageSquarePlus, MoreVertical, Pencil, Trash2, Search,
   Bot, PanelRightClose, PanelRightOpen, FileText, X, Sparkles, Globe, ScanText, Lock, Paperclip, FileUp,
+  ThumbsUp, ThumbsDown, BrainCircuit,
 } from 'lucide-react';
 import { api, fmtJalali } from './api';
 import { toPersianDigits } from '@/lib/normalize';
@@ -20,7 +22,7 @@ interface Citation {
   revision: string | null; revStatus: string | null; page?: number | null; snippet?: string | null;
   source?: 'internal' | 'web' | 'vision'; url?: string;
 }
-interface Turn { role: 'USER' | 'ASSISTANT'; content: string; citations?: Citation[]; mode?: string; fileChip?: { name: string; meta: string } }
+interface Turn { role: 'USER' | 'ASSISTANT'; content: string; citations?: Citation[]; mode?: string; fileChip?: { name: string; meta: string }; id?: string; learned?: boolean }
 interface ConvItem { id: string; title: string; createdAt: string; messageCount: number }
 
 const EXAMPLES = [
@@ -49,6 +51,12 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
   // فایل بارگذاری‌شده در گفت‌وگو — دستیار متن استخراج‌شدهٔ آن را به‌عنوان شاهد می‌خواند
   const [attachedFile, setAttachedFile] = useState<{ id: string; name: string; meta: string } | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
+  // یادگیرنده: وضعیت بازخورد هر پیام + دیالوگ تصحیح برای 👎 + پیام نتیجهٔ یادگیری
+  const [fbState, setFbState] = useState<Record<number, 'UP' | 'DOWN'>>({});
+  const [downFor, setDownFor] = useState<number | null>(null);
+  const [downComment, setDownComment] = useState('');
+  const [downExpected, setDownExpected] = useState('');
+  const [notice, setNotice] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -87,7 +95,7 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
     try {
       const r = await api<{ conversation: { id: string; title: string }; messages: Array<{ id: string; role: string; content: string; citations: Citation[] }> }>(`/api/conversations/${id}`);
       setActiveId(r.conversation.id);
-      setTurns(r.messages.map((m) => ({ role: m.role as 'USER' | 'ASSISTANT', content: m.content, citations: m.citations })));
+      setTurns(r.messages.map((m) => ({ role: m.role as 'USER' | 'ASSISTANT', content: m.content, citations: m.citations, id: m.id })));
     } catch (e) {
       setError((e as Error).message);
     }
@@ -136,7 +144,7 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
     setQ(''); setBusy(true); setError('');
     if (taRef.current) taRef.current.style.height = 'auto';
     try {
-      const r = await api<{ answer: string; citations: Citation[]; conversationId: string | null; mode: string }>('/api/assistant', {
+      const r = await api<{ answer: string; citations: Citation[]; conversationId: string | null; mode: string; messageId?: string; learned?: boolean }>('/api/assistant', {
         method: 'POST', json: {
           question: text, conversationId: activeId,
           docId: docScope?.id || undefined,
@@ -145,7 +153,8 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
           visionPage: docScope && visionPage ? parseInt(visionPage, 10) || undefined : undefined,
         },
       });
-      setTurns((prev) => [...prev, { role: 'ASSISTANT', content: r.answer, citations: r.citations, mode: r.mode }]);
+      setTurns((prev) => [...prev, { role: 'ASSISTANT', content: r.answer, citations: r.citations, mode: r.mode, id: r.messageId, learned: r.learned }]);
+      if (r.learned) setNotice('این پاسخ با حافظهٔ یادگیرندهٔ سامانه (تجربهٔ بازخوردهای قبلی) تقویت شد.');
       if (r.conversationId) {
         setActiveId(r.conversationId);
         loadConvs(search);
@@ -172,6 +181,33 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
     } catch (e) { setError((e as Error).message); }
   }
 
+  // ---------- یادگیرنده: ثبت بازخورد 👍/👎 — دستیار از آن می‌آموزد ----------
+  function flashNotice(msg: string) {
+    setNotice(msg);
+    window.setTimeout(() => setNotice((cur) => (cur === msg ? '' : cur)), 6000);
+  }
+
+  async function sendFeedback(idx: number, rating: 'UP' | 'DOWN', extra?: { comment?: string; expectedAnswer?: string }) {
+    const t = turns[idx];
+    if (!t?.id) return;
+    try {
+      const r = await api<{ learned: boolean; message: string }>('/api/assistant/feedback', {
+        method: 'POST',
+        json: { messageId: t.id, rating, comment: extra?.comment || undefined, expectedAnswer: extra?.expectedAnswer || undefined },
+      });
+      setFbState((prev) => ({ ...prev, [idx]: rating }));
+      setDownFor(null); setDownComment(''); setDownExpected('');
+      flashNotice(r.message);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  async function submitDown() {
+    if (downFor == null) return;
+    await sendFeedback(downFor, 'DOWN', { comment: downComment, expectedAnswer: downExpected });
+  }
+
   // ---------- رندر Markdown پاسخ دستیار (سبک چت‌جی‌پی‌تی) ----------
   // dir=auto روی هر بلاک: پاراگراف فارسی راست‌چین، پاراگراف انگلیسی چپ‌چین
   const mdComponents = {
@@ -192,7 +228,7 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
 
   // ---------- ساید‌بار سوابق ----------
   const sidebar = (
-    <div className="flex flex-col h-full w-72 bg-muted/40 border-l" data-testid="assistant-sidebar">
+    <div className="flex flex-col h-full w-72" data-testid="assistant-sidebar">
       <div className="p-3 space-y-2">
         <Button onClick={newChat} className="w-full justify-start gap-2" aria-label="گفت‌وگوی جدید">
           <MessageSquarePlus className="h-4 w-4" /> گفت‌وگوی جدید
@@ -218,18 +254,18 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
           <div
             key={c.id}
             role="listitem"
-            className={`group relative rounded-lg text-sm transition-colors ${c.id === activeId ? 'bg-teal-700 text-white' : 'hover:bg-accent'}`}
+            className={`group relative rounded-xl text-sm transition-all ${c.id === activeId ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25' : 'hover:bg-accent/80'}`}
           >
             <button onClick={() => openConv(c.id)} className="block w-full text-right px-3 py-2.5" title={c.title}>
               <span dir="auto" className="block truncate font-medium leading-5 text-start">{c.title}</span>
-              <span className={`block text-[11px] mt-0.5 ${c.id === activeId ? 'text-teal-100' : 'text-muted-foreground'}`}>
+              <span className={`block text-[11px] mt-0.5 ${c.id === activeId ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                 {fmtJalali(c.createdAt)} · {toPersianDigits(String(c.messageCount))} پیام
               </span>
             </button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className={`absolute left-1.5 top-2 p-1 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 ${c.id === activeId ? 'text-white' : 'text-muted-foreground'}`}
+                  className={`absolute left-1.5 top-2 p-1 rounded opacity-0 group-hover:opacity-100 focus:opacity-100 ${c.id === activeId ? 'text-primary-foreground' : 'text-muted-foreground'}`}
                   aria-label={`گزینه‌های ${c.title}`}
                 >
                   <MoreVertical className="h-3.5 w-3.5" />
@@ -247,7 +283,7 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
           </div>
         ))}
       </div>
-      <p className="border-t p-3 text-[11px] leading-4 text-muted-foreground">
+      <p className="border-t border-border/60 p-3 text-[11px] leading-4 text-muted-foreground">
         گفت‌وگوها فقط برای کاربر شما ذخیره می‌شوند و مجوز اسناد در هر پاسخ رعایت می‌گردد.
       </p>
     </div>
@@ -256,7 +292,7 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
   return (
     <div className="flex h-[calc(100vh-11.5rem)] min-h-[28rem] -my-2" data-testid="assistant-view">
       {/* ساید‌بار — دسکتاپ */}
-      <aside className="hidden md:block shrink-0 rounded-xl overflow-hidden border shadow-sm">{sidebar}</aside>
+      <aside className="hidden md:block shrink-0 rounded-2xl glass glass-sheen overflow-hidden">{sidebar}</aside>
 
       {/* ساید‌بار — موبایل (روی‌هم) */}
       {sidebarOpen && (
@@ -292,7 +328,7 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
         </div>
 
         {/* پیام‌ها */}
-        <div className="flex-1 overflow-y-auto rounded-xl border bg-card/50 px-3 sm:px-6 py-5 space-y-5" data-testid="assistant-messages">
+        <div className="flex-1 overflow-y-auto rounded-2xl glass glass-sheen px-3 sm:px-6 py-5 space-y-5" data-testid="assistant-messages">
           {turns.length === 0 && !busy && (
             <div className="max-w-xl mx-auto text-center space-y-4 pt-8">
               <div className="mx-auto w-12 h-12 rounded-full bg-teal-700/10 flex items-center justify-center">
@@ -309,9 +345,9 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
                   <button
                     key={ex}
                     onClick={() => ask(ex)}
-                    className="block w-full text-right rounded-xl border bg-background px-4 py-3 text-sm hover:bg-accent hover:border-teal-700/40 transition-colors"
+                    className="block w-full text-right rounded-xl glass px-4 py-3 text-sm hover:border-primary/40 hover:shadow-md transition-all"
                   >
-                    <span className="text-teal-700 ml-1.5">«</span>{ex}<span className="text-teal-700 mr-1.5">»</span>
+                    <span className="text-primary ml-1.5">«</span>{ex}<span className="text-primary mr-1.5">»</span>
                   </button>
                 ))}
               </div>
@@ -321,7 +357,7 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
           {turns.map((t, i) =>
             t.role === 'USER' ? (
               <div key={i} className="flex justify-start" data-testid="msg-user">
-                <div className="rounded-2xl rounded-tr-md bg-teal-700 text-white px-4 py-3 max-w-[85%] text-sm leading-6 whitespace-pre-wrap" dir="auto" data-bidi="auto">
+                <div className="bubble-user rounded-2xl rounded-tr-md px-4 py-3 max-w-[85%] text-sm leading-6 whitespace-pre-wrap" dir="auto" data-bidi="auto">
                   {t.fileChip && (
                     <span className="flex items-center gap-2 rounded-lg bg-white/15 px-2.5 py-1.5 mb-2 max-w-xs" dir="ltr">
                       <FileUp className="h-4 w-4 shrink-0" />
@@ -334,12 +370,38 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
               </div>
             ) : (
               <div key={i} className="flex gap-2.5 max-w-full" data-testid="msg-assistant">
-                <div className="shrink-0 w-8 h-8 rounded-full bg-teal-700/10 flex items-center justify-center mt-0.5">
-                  <Bot className="h-[18px] w-[18px] text-teal-700" />
+                <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mt-0.5">
+                  <Bot className="h-[18px] w-[18px] text-primary" />
                 </div>
-                <div className="min-w-0 flex-1 space-y-2.5">
-                  <div className="rounded-2xl rounded-tl-md border bg-background px-4 py-3 text-sm leading-7 md-bidi" data-testid="assistant-content">
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="rounded-2xl rounded-tl-md glass glass-sheen px-4 py-3 text-sm leading-7 md-bidi" data-testid="assistant-content">
                     <Markdown components={mdComponents}>{t.content}</Markdown>
+                  </div>
+                  {/* نوار بازخورد — دستیار از شما یاد می‌گیرد */}
+                  <div className="flex items-center gap-1 pr-1" data-testid="assistant-feedback">
+                    <button
+                      onClick={() => sendFeedback(i, 'UP')}
+                      disabled={!t.id || fbState[i] === 'UP'}
+                      className={`p-1.5 rounded-lg transition-all hover:bg-accent ${fbState[i] === 'UP' ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
+                      title="پاسخ خوب بود — دستیار این پاسخ را یاد می‌گیرد"
+                      aria-label="بازخورد مثبت"
+                    >
+                      <ThumbsUp className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => { setDownFor(i); setDownComment(''); setDownExpected(''); }}
+                      disabled={!t.id || fbState[i] === 'DOWN'}
+                      className={`p-1.5 rounded-lg transition-all hover:bg-accent ${fbState[i] === 'DOWN' ? 'text-red-600 bg-red-500/10' : 'text-muted-foreground'}`}
+                      title="پاسخ دقیق نبود — پاسخ درست را به دستیار بیاموزید"
+                      aria-label="بازخورد منفی"
+                    >
+                      <ThumbsDown className="h-3.5 w-3.5" />
+                    </button>
+                    {t.learned && (
+                      <span className="chip ml-1" title="این پاسخ با دانش آموخته‌شده از بازخوردهای کاربران تقویت شده است">
+                        <BrainCircuit className="h-3 w-3 text-primary" /> تقویت‌شده با حافظهٔ یادگیرنده
+                      </span>
+                    )}
                   </div>
                   {t.citations && t.citations.length > 0 && (
                     <div className="space-y-1.5" data-testid="assistant-citations">
@@ -396,14 +458,14 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
 
           {busy && (
             <div className="flex gap-2.5" data-testid="assistant-typing">
-              <div className="shrink-0 w-8 h-8 rounded-full bg-teal-700/10 flex items-center justify-center">
-                <Bot className="h-[18px] w-[18px] text-teal-700" />
+              <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+                <Bot className="h-[18px] w-[18px] text-primary" />
               </div>
-              <div className="rounded-2xl rounded-tl-md border bg-background px-4 py-3">
+              <div className="rounded-2xl rounded-tl-md glass glass-sheen px-4 py-3">
                 <span className="inline-flex gap-1 items-center" aria-label="در حال پردازش">
-                  <span className="w-1.5 h-1.5 rounded-full bg-teal-700 animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-teal-700 animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-teal-700 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
                   <span className="text-xs text-muted-foreground mr-2">در حال جست‌وجوی اسناد مجاز و تولید پاسخ مستند…</span>
                 </span>
               </div>
@@ -411,14 +473,14 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
           )}
           {uploadingFile && (
             <div className="flex gap-2.5" data-testid="assistant-uploading">
-              <div className="shrink-0 w-8 h-8 rounded-full bg-teal-700/10 flex items-center justify-center">
-                <Bot className="h-[18px] w-[18px] text-teal-700" />
+              <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+                <Bot className="h-[18px] w-[18px] text-primary" />
               </div>
-              <div className="rounded-2xl rounded-tl-md border bg-background px-4 py-3">
+              <div className="rounded-2xl rounded-tl-md glass glass-sheen px-4 py-3">
                 <span className="inline-flex gap-1 items-center" aria-label="در حال استخراج فایل">
-                  <span className="w-1.5 h-1.5 rounded-full bg-teal-700 animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-teal-700 animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-teal-700 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
                   <span className="text-xs text-muted-foreground mr-2">در حال استخراج اطلاعات فایل (متن/OCR) و تحلیل آن…</span>
                 </span>
               </div>
@@ -426,6 +488,15 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
           )}
           <div ref={bottomRef} />
         </div>
+
+        {/* پیام نتیجهٔ یادگیری */}
+        {notice && (
+          <div className="mt-2 flex items-center gap-2 rounded-xl glass-strong glass-sheen px-3 py-2 text-sm text-foreground" data-testid="learning-notice" role="status">
+            <BrainCircuit className="h-4 w-4 shrink-0 text-primary" />
+            <span dir="auto" className="flex-1">{notice}</span>
+            <button onClick={() => setNotice('')} aria-label="بستن پیام"><X className="h-4 w-4" /></button>
+          </div>
+        )}
 
         {error && (
           <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-red-300 bg-red-50 dark:bg-red-950/30 px-3 py-2 text-sm text-red-700 dark:text-red-300">
@@ -489,7 +560,7 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
               </button>
             </div>
           )}
-          <div className="flex items-end gap-2 rounded-2xl border bg-background p-2 shadow-sm focus-within:border-teal-700/50">
+          <div className="flex items-end gap-2 rounded-2xl glass-strong glass-sheen p-2 focus-within:border-primary/50 transition-colors">
             <textarea
               ref={taRef}
               value={q}
@@ -518,6 +589,40 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
           <DialogFooter>
             <Button variant="outline" onClick={() => setRenameId(null)}>انصراف</Button>
             <Button onClick={doRename} disabled={!renameTitle.trim()}>ذخیره</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* دیالوگ بازخورد منفی — تصحیح کاربر = بهترین منبع یادگیری */}
+      <Dialog open={downFor != null} onOpenChange={(o) => { if (!o) setDownFor(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><BrainCircuit className="h-4 w-4 text-primary" /> آموزش دستیار</DialogTitle>
+            <DialogDescription>
+              پاسخ دقیق نبود. اگر پاسخ درست را بنویسید، دستیار آن را یاد می‌گیرد و از این پس پاسخ‌های مشابه را اصلاح می‌کند. (هر دو کادر اختیاری است)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>پاسخ درست چه بود؟</Label>
+              <textarea
+                dir="auto"
+                rows={3}
+                value={downExpected}
+                onChange={(e) => setDownExpected(e.target.value)}
+                className="w-full rounded-lg border bg-background/60 px-3 py-2 text-sm outline-none focus:border-primary/50"
+                placeholder="مثلاً: سایز خط ۶ اینچ است نه ۴ اینچ…"
+                aria-label="پاسخ درست"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>توضیح (اختیاری)</Label>
+              <Input value={downComment} onChange={(e) => setDownComment(e.target.value)} placeholder="چه چیزی اشتباه بود؟" aria-label="توضیح بازخورد" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDownFor(null)}>انصراف</Button>
+            <Button onClick={submitDown} disabled={!downExpected.trim() && !downComment.trim()}>ثبت و یادگیری</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { UserPlus, FolderPlus, BookOpen, Settings2, ScrollText, Database, Copy, Cpu, RotateCcw, Ban } from 'lucide-react';
+import { UserPlus, FolderPlus, BookOpen, Settings2, ScrollText, Database, Copy, Cpu, RotateCcw, Ban, BrainCircuit, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { api, fmtJalali, ROLE_LABELS, CONF_LABELS } from './api';
 
@@ -33,6 +33,7 @@ export function AdminView({ orgName }: { orgName: string }) {
           <TabsTrigger value="settings"><Settings2 className="h-4 w-4 ml-1" /> تنظیمات</TabsTrigger>
           <TabsTrigger value="audit"><ScrollText className="h-4 w-4 ml-1" /> حسابرسی</TabsTrigger>
           <TabsTrigger value="processing"><Cpu className="h-4 w-4 ml-1" /> پردازش</TabsTrigger>
+          <TabsTrigger value="learning"><BrainCircuit className="h-4 w-4 ml-1" /> یادگیری</TabsTrigger>
           <TabsTrigger value="sample"><Database className="h-4 w-4 ml-1" /> داده نمونه</TabsTrigger>
         </TabsList>
         <TabsContent value="users"><UsersTab /></TabsContent>
@@ -41,6 +42,7 @@ export function AdminView({ orgName }: { orgName: string }) {
         <TabsContent value="settings"><SettingsTab orgName={orgName} /></TabsContent>
         <TabsContent value="audit"><AuditTab /></TabsContent>
         <TabsContent value="processing"><ProcessingTab /></TabsContent>
+        <TabsContent value="learning"><LearningTab /></TabsContent>
         <TabsContent value="sample"><SampleTab /></TabsContent>
       </Tabs>
     </div>
@@ -555,6 +557,139 @@ function ProcessingTab() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ---------- تب یادگیری — حافظهٔ آموختهٔ دستیار و آمار بازخورد ----------
+// دستیار از بازخوردهای 👍/👎 کاربران می‌آموزد؛ اینجا ادمین حافظه را مدیریت می‌کند:
+// افزودن دانش دستی، فعال/غیرفعال‌کردن، تنظیم وزن و حذف.
+interface LearnedEntry { id: string; question: string; answer: string; source: string; weight: number; useCount: number; upvotes: number; downvotes: number; active: boolean; createdBy: string; updatedAt: string }
+interface LearningStats { feedbacks: number; up: number; down: number; corrections: number; learned: number; uses: number; satisfaction: number | null }
+
+const LEARN_SOURCE_LABELS: Record<string, string> = {
+  FEEDBACK_UP: 'از بازخورد 👍',
+  CORRECTION: 'تصحیح کاربر',
+  MANUAL: 'آموزش دستی ادمین',
+};
+
+function LearningTab() {
+  const [entries, setEntries] = useState<LearnedEntry[]>([]);
+  const [stats, setStats] = useState<LearningStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [qForm, setQForm] = useState({ question: '', answer: '' });
+
+  const load = useCallback(() => {
+    setLoading(true);
+    api<{ entries: LearnedEntry[]; stats: LearningStats }>('/api/assistant/learn')
+      .then((r) => { setEntries(r.entries); setStats(r.stats); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const id = window.setTimeout(load, 0);
+    return () => window.clearTimeout(id);
+  }, [load]);
+
+  async function addManual() {
+    if (!qForm.question.trim() || !qForm.answer.trim()) return;
+    try {
+      await api('/api/assistant/learn', { method: 'POST', json: qForm });
+      toast({ title: 'آموخته شد', description: 'دانش جدید به حافظهٔ دستیار اضافه شد.' });
+      setQForm({ question: '', answer: '' });
+      load();
+    } catch (e) {
+      toast({ title: 'خطا', description: (e as Error).message, variant: 'destructive' });
+    }
+  }
+
+  async function toggleActive(e0: LearnedEntry) {
+    try {
+      await api('/api/assistant/learn', { method: 'PATCH', json: { id: e0.id, active: !e0.active } });
+      load();
+    } catch (e) {
+      toast({ title: 'خطا', description: (e as Error).message, variant: 'destructive' });
+    }
+  }
+
+  async function removeEntry(id: string) {
+    try {
+      await api(`/api/assistant/learn?id=${id}`, { method: 'DELETE' });
+      toast({ title: 'حذف شد' });
+      load();
+    } catch (e) {
+      toast({ title: 'خطا', description: (e as Error).message, variant: 'destructive' });
+    }
+  }
+
+  return (
+    <div className="space-y-4" data-testid="learning-tab">
+      <Card className="glass glass-sheen rounded-2xl">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2"><BrainCircuit className="h-4 w-4 text-primary" /> هوش مصنوعی یادگیرنده</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground leading-6">
+            دستیار با هر بازخورد کاربران (👍/👎) خودش را تقویت می‌کند: پاسخ‌های تأییدشده الگویاد می‌گیرند،
+            تصحیح‌های کاربران جایگزین پاسخ‌های ضعیف می‌شود و اسناد مفید در بازیابی بعدی اولویت می‌گیرند.
+          </p>
+          {stats && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <div className="rounded-xl glass p-3 text-center"><div className="text-xl font-bold">{stats.feedbacks}</div><div className="text-[11px] text-muted-foreground mt-0.5">کل بازخوردها</div></div>
+              <div className="rounded-xl glass p-3 text-center"><div className="text-xl font-bold text-primary">{stats.satisfaction != null ? `${stats.satisfaction}٪` : '—'}</div><div className="text-[11px] text-muted-foreground mt-0.5">نرخ رضایت</div></div>
+              <div className="rounded-xl glass p-3 text-center"><div className="text-xl font-bold">{stats.corrections}</div><div className="text-[11px] text-muted-foreground mt-0.5">تصحیح آموخته‌شده</div></div>
+              <div className="rounded-xl glass p-3 text-center"><div className="text-xl font-bold">{stats.learned}</div><div className="text-[11px] text-muted-foreground mt-0.5">دانش فعال</div></div>
+              <div className="rounded-xl glass p-3 text-center"><div className="text-xl font-bold">{stats.uses}</div><div className="text-[11px] text-muted-foreground mt-0.5">دفعات به‌کارگیری دانش</div></div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="glass rounded-2xl">
+        <CardHeader className="pb-2"><CardTitle className="text-base">آموزش دستی — پرسش و پاسخ درست را به دستیار بیاموزید</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>پرسش (نمونهٔ طبیعی یا کلیدواژه‌ها)</Label>
+            <Input dir="auto" value={qForm.question} onChange={(e) => setQForm({ ...qForm, question: e.target.value })} placeholder="مثلاً: سایز خط 6-P-1183-B2A چند است؟" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>پاسخ درست</Label>
+            <textarea dir="auto" rows={3} value={qForm.answer} onChange={(e) => setQForm({ ...qForm, answer: e.target.value })}
+              className="w-full rounded-lg border bg-background/60 px-3 py-2 text-sm outline-none focus:border-primary/50"
+              placeholder="پاسخی که دستیار باید برای پرسش‌های مشابه بدهد…" />
+          </div>
+          <Button onClick={addManual} disabled={!qForm.question.trim() || !qForm.answer.trim()}>افزودن به حافظهٔ یادگیرنده</Button>
+        </CardContent>
+      </Card>
+
+      <Card className="glass rounded-2xl">
+        <CardHeader className="pb-2"><CardTitle className="text-base">دانش‌های آموخته‌شده ({entries.length})</CardTitle></CardHeader>
+        <CardContent>
+          {loading && <p className="text-sm text-muted-foreground">در حال بارگذاری…</p>}
+          {!loading && entries.length === 0 && <p className="text-sm text-muted-foreground">هنوز چیزی آموخته نشده است — با اولین بازخوردها حافظه شکل می‌گیرد.</p>}
+          <div className="space-y-2 max-h-96 overflow-y-auto thin-scroll">
+            {entries.map((en) => (
+              <div key={en.id} className={`rounded-xl border p-3 space-y-1.5 ${en.active ? '' : 'opacity-50'}`}>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant="outline" className="text-[10px]">{LEARN_SOURCE_LABELS[en.source] || en.source}</Badge>
+                  <Badge variant="outline" className="text-[10px]">وزن {en.weight.toFixed(2)}</Badge>
+                  <Badge variant="outline" className="text-[10px]">به‌کارگیری {en.useCount}</Badge>
+                  {en.upvotes > 0 && <Badge variant="outline" className="text-[10px]">👍 {en.upvotes}</Badge>}
+                  {en.downvotes > 0 && <Badge variant="outline" className="text-[10px]">👎 {en.downvotes}</Badge>}
+                  <span className="mr-auto flex items-center gap-2">
+                    <span className="text-[10px] text-muted-foreground hidden sm:inline">{en.createdBy} · {fmtJalali(en.updatedAt, true)}</span>
+                    <Switch checked={en.active} onCheckedChange={() => toggleActive(en)} aria-label="فعال/غیرفعال" />
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-600" onClick={() => removeEntry(en.id)} aria-label="حذف"><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </span>
+                </div>
+                <p dir="auto" className="text-sm font-medium text-start">پرسش: {en.question}</p>
+                <p dir="auto" className="text-xs text-muted-foreground leading-5 line-clamp-3 text-start">پاسخ: {en.answer}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

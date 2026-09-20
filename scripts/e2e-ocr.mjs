@@ -58,7 +58,11 @@ async function main() {
   const S = 'JBSWY3DPEHPK3PXP';
   await db.user.update({ where: { username: 'admin' }, data: { mfaSecret: S, mfaEnabled: true } });
   const l1 = await call('admin', '/api/auth/login', { method: 'POST', json: { username: 'admin', password: process.env.ADMIN_PASSWORD || 'CHANGE_ME_ADMIN_PASSWORD' } });
-  const l2 = await call('admin', '/api/auth/mfa-verify', { method: 'POST', json: { mfaToken: l1.data.mfaToken, code: totp(S) } });
+  // MFA سراسری ممکن است خاموش باشد — فقط اگر سامانه توکن خواست، کد TOTP را تأیید کن
+  let l2 = { status: 200 };
+  if (l1.data?.mfaToken) {
+    l2 = await call('admin', '/api/auth/mfa-verify', { method: 'POST', json: { mfaToken: l1.data.mfaToken, code: totp(S) } });
+  }
   console.log('login:', l1.status, l2.status);
   if (l2.status !== 200) throw new Error('login failed');
 
@@ -69,7 +73,14 @@ async function main() {
     projectId: proj.id, confidentiality: 'INTERNAL', isSample: true,
   } });
   console.log('doc create:', docResp.status, docResp.data?.document?.id || docResp.data?.id);
-  const docId = docResp.data?.document?.id || docResp.data?.id;
+  let docId = docResp.data?.document?.id || docResp.data?.id;
+  if (!docId && docResp.status === 409) {
+    // سند از دور قبلی مانده است — استفادهٔ مجدد
+    const existing = await db.document.findFirst({ where: { docNumber: DOC_NO } });
+    docId = existing?.id;
+    console.log('doc reuse:', docId);
+  }
+  if (!docId) throw new Error('doc create failed');
 
   // ۳) آپلود PDF
   const buf = await makePdf(BODY);
