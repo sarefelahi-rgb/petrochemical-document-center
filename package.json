@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "prebuild": "prisma generate",
-    "build": "next build --webpack && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/ && mkdir -p .next/standalone/prisma && cp prisma/schema.sql .next/standalone/prisma/ && rm -rf .next/standalone/skills .next/standalone/docs .next/standalone/tests .next/standalone/examples .next/standalone/scripts .next/standalone/assets .next/standalone/upload .next/standalone/download .next/standalone/db .next/standalone/.next-deploy-test && rm -f .next/standalone/.env .next/standalone/worklog.md .next/standalone/Caddyfile .next/standalone/*.log",
+    "build": "next build --webpack && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/ && cp -r assets .next/standalone/ && mkdir -p .next/standalone/prisma && cp prisma/schema.sql .next/standalone/prisma/ && rm -rf .next/standalone/skills .next/standalone/docs .next/standalone/tests .next/standalone/examples .next/standalone/scripts .next/standalone/upload .next/standalone/download .next/standalone/db .next/standalone/.next-deploy-test && rm -f .next/standalone/.env .next/standalone/worklog.md .next/standalone/Caddyfile .next/standalone/*.log",
     "postinstall": "prisma generate",
     "start": "NODE_ENV=production NEXT_RUNTIME=nodejs node .next/standalone/server.js",
     "lint": "eslint .",
