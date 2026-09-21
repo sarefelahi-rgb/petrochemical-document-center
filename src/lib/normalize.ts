@@ -31,8 +31,9 @@ export function toPersianDigits(s: string | number): string {
 export function normalizeFa(input: string): string {
   if (!input) return '';
   let s = input;
-  s = s.replace(/[\u064A\u0649]/g, '\u06CC'); // ي/ی → ی فارسی
+  s = s.replace(/[\u064A\u0649\u06D2]/g, '\u06CC'); // ي/ی/ے → ی فارسی
   s = s.replace(/\u0643/g, '\u06A9'); // ك → ک
+  s = s.replace(/\u0629/g, '\u0647'); // ة → ه
   s = s.replace(/[\u0622\u0623\u0625]/g, '\u0627'); // آ/أ/إ → ا
   s = s.replace(/[\u064B-\u065F\u0670]/g, ''); // اعراب
   s = s.replace(/\u0640/g, ''); // کشیده (تطویل)
@@ -76,4 +77,63 @@ export function candidateCodes(input: string): string[] {
     if (n.length >= 3) out.add(n);
   }
   return Array.from(out);
+}
+
+// ---------- جست‌وجوی فراگیر (تصمیم بهره‌بردار ۱۴۰۵) ----------
+// همهٔ شیوه‌های نگارش باید نتیجهٔ یکسان بدهند:
+//   بزرگ/کوچکی، ارقام فارسی/عربی/لاتین، ی/ك عربی، آ/أ/إ، اعراب، کشیده،
+//   نیم‌فاصله/فاصله/بی‌فاصله، علائم نگارشی و حذف کلمات پیوندی (و/در/به/…)
+// برای دادهٔ خام (عنوان‌ها): معادل عربی‌شدهٔ پرسش هم ساخته می‌شود تا متن ذخیره‌شده با
+// حروف عربی (مثلاً خروجی OCR قدیمی) نیز پیدا شود.
+
+// آینهٔ عربی: حروف فارسی را به معادل عربی رایج برمی‌گرداند — فقط برای الگوهای LIKE روی متن خام
+// «ه» تنها در پایان واژه به «ة» تبدیل می‌شود (تاء مربوطه عربی در پایان واژه می‌آید)
+export function arabicMirror(input: string): string {
+  return input
+    .replace(/\u06CC/g, '\u064A') // ی → ي
+    .replace(/\u06A9/g, '\u0643') // ک → ك
+    .replace(/ه(?=\s|$|[،.,؛;!?)\]])/g, 'ة'); // هٔ پایانی واژه → ة
+}
+
+// متن نرمال فشرده (بی‌فاصله) برای نمایهٔ جست‌وجو — روی ستون searchNorm ذخیره می‌شود
+// چرا بی‌فاصله؟ «برگه ۱»، «برگه۱» و «برگه‌۱» همه یک نمایه می‌دهند؛ فاصله/نیم‌فاصله در
+// دادهٔ ذخیره‌شده و پرسش کاربر هر چه باشد، نتیجه یکسان است
+export function buildSearchNorm(parts: Array<string | null | undefined>): string {
+  return normalizeFa(parts.filter((p): p is string => Boolean(p && p.trim())).join(' ')).replace(/\s+/g, '');
+}
+
+// فرم پرسش برای مقایسه با نمایهٔ فشرده
+export function compactQuery(input: string): string {
+  return normalizeFa(input).replace(/\s+/g, '');
+}
+
+// توکن‌های معنادار پرسش — حذف کلمات پیوندی کوتاه؛ برای جست‌وجوی «هر واژه» (OR)
+const STOP_TOKENS = new Set(['و', 'در', 'به', 'از', 'که', 'را', 'با', 'برای', 'the', 'of', 'and', 'for', 'a', 'an', 'on', 'in']);
+
+export function queryTokens(input: string): string[] {
+  return normalizeFa(input)
+    .split(' ')
+    .filter((t) => t.length >= 2 && !STOP_TOKENS.has(t))
+    .slice(0, 10);
+}
+
+// گونه‌های جست‌وجو برای ستون‌های خام (LIKE) — پوشش حروف عربی/فارسی، ارقام و فاصله‌ها
+// خروجی محدود و یکتا است تا کوئری منفجر نشود
+export function searchVariants(input: string): string[] {
+  if (!input) return [];
+  const raw = input.trim();
+  const faQ = normalizeFa(raw);
+  const out = new Set<string>();
+  if (raw) out.add(raw);
+  if (faQ) {
+    out.add(faQ);
+    out.add(toPersianDigits(faQ));
+    out.add(arabicMirror(faQ));
+    // فرم فشرده: بدون فاصله/نیم‌فاصله — «پمپ 101» و «پمپ101» و «پمپ‌101» همه یکسان می‌شوند
+    out.add(faQ.replace(/\s+/g, ''));
+    out.add(arabicMirror(faQ).replace(/\s+/g, ''));
+  }
+  out.add(arabicMirror(raw));
+  out.delete('');
+  return Array.from(out).slice(0, 8);
 }

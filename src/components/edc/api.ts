@@ -34,8 +34,8 @@ export const CONF_LABELS: Record<string, string> = {
 };
 
 export const ROLE_LABELS: Record<string, string> = {
-  ADMIN: 'مدیر سامانه', DOC_CONTROLLER: 'مدیر اسناد', ENGINEER: 'مهندس رشته', REVIEWER: 'بازبین',
-  APPROVER: 'تأییدکننده', OPERATOR: 'بهره‌بردار', CONTRACTOR: 'پیمانکار', AUDITOR: 'ممیز',
+  ADMIN: 'مدیر سامانه', ENG_EXPERT: 'کارشناس اداره مهندسی عمومی', ENG_HEAD: 'رئیس اداره مهندسی عمومی',
+  TECH_HEAD: 'رئیس خدمات فنی فراورش یک', OFFICE_MGR: 'مسئول دفتر رئیس اداره مهندسی عمومی', CONTRACTOR: 'پیمانکار',
 };
 
 export const REV_STATUS_LABELS: Record<string, string> = {

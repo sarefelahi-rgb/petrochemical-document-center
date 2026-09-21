@@ -7,7 +7,7 @@ import { requireUser, buildAccessContext, jsonOk, jsonError } from '@/lib/guard'
 import { can, canViewDocument, roleHas } from '@/lib/permissions';
 import { audit } from '@/lib/audit';
 
-const REVIEWER_ROLES = ['ADMIN', 'DOC_CONTROLLER', 'ENGINEER', 'REVIEWER', 'APPROVER'];
+const REVIEWER_ROLES = ['ADMIN', 'ENG_EXPERT', 'ENG_HEAD', 'TECH_HEAD'];
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireUser();

@@ -2,7 +2,7 @@
 // اصل صداقت: پیشنهاد مدل «پیشنهاد» است؛ تأیید نهایی و ویرایش با کارشناس/ادمین
 import { db } from '@/lib/db';
 import { chatComplete } from '@/lib/modelGateway';
-import { normalizeCode } from '@/lib/normalize';
+import { normalizeCode, buildSearchNorm } from '@/lib/normalize';
 import { audit } from '@/lib/audit';
 
 export interface AiSuggestion {
@@ -179,6 +179,7 @@ export async function approveAsDocument(opts: {
       docNumber,
       docNumberRaw: opts.fields.docNumber || aiFields.docNumber || docNumber,
       title,
+      searchNorm: buildSearchNorm([title, docNumber, opts.fields.docNumber || aiFields.docNumber || docNumber]),
       discipline: opts.fields.discipline || aiFields.discipline || 'UNK',
       docType: opts.fields.docType || aiFields.docType || 'OTHER',
       unitId: opts.fields.unitId || unit?.id || null,

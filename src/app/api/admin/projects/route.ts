@@ -7,7 +7,7 @@ import { audit } from '@/lib/audit';
 async function requireManager() {
   const auth = await requireUser();
   if ('resp' in auth) return auth;
-  if (!['ADMIN', 'DOC_CONTROLLER'].includes(auth.user.role)) return { resp: jsonError('اجازه مدیریت ساختار پروژه را ندارید.', 403, 'FORBIDDEN') };
+  if (!['ADMIN', 'ENG_EXPERT', 'ENG_HEAD'].includes(auth.user.role)) return { resp: jsonError('اجازه مدیریت ساختار پروژه را ندارید.', 403, 'FORBIDDEN') };
   return auth;
 }
 

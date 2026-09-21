@@ -3,8 +3,8 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: "مرکز هوشمند اسناد مهندسی",
-  description: "سامانه تحت وب سازمانی مدیریت اسناد و نقشه‌های پتروشیمی — رابط فارسی راست‌به‌چپ",
+  title: "مرکز هوشمند اسناد اداره مهندسی عمومی فراورش یک",
+  description: "مرکز هوشمند اسناد اداره مهندسی عمومی فراورش یک — رابط فارسی راست‌به‌چپ",
 };
 
 export const viewport: Viewport = {

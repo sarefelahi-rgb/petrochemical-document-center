@@ -3,7 +3,7 @@
 import { db } from '@/lib/db';
 import { hashPassword, randomToken } from '@/lib/auth';
 import { storeOriginal, ensureDirs } from '@/lib/storage';
-import { normalizeCode } from '@/lib/normalize';
+import { normalizeCode, buildSearchNorm } from '@/lib/normalize';
 import { enqueuePipelineForFile } from '@/lib/jobs';
 import fs from 'fs';
 import path from 'path';
@@ -129,8 +129,11 @@ export async function createSampleData(orgId: string, adminId: string) {
     });
     return u;
   };
-  const eng1 = await mkUser('eng.sample1', 'مهندس نمونه — پروژه الف', 'ENGINEER', 'CONFIDENTIAL', [p1.id]);
-  const eng2 = await mkUser('eng.sample2', 'مهندس نمونه — پروژه ب', 'ENGINEER', 'CONFIDENTIAL', [p2.id]);
+  const eng1 = await mkUser('eng.sample1', 'کارشناس نمونه — اداره مهندسی عمومی', 'ENG_EXPERT', 'CONFIDENTIAL', [p1.id]);
+  const eng2 = await mkUser('eng.sample2', 'کارشناس نمونه — پروژه ب', 'ENG_EXPERT', 'CONFIDENTIAL', [p2.id]);
+  const head1 = await mkUser('head.sample1', 'رئیس نمونه — اداره مهندسی عمومی', 'ENG_HEAD', 'RESTRICTED', [p1.id, p2.id]);
+  const tech1 = await mkUser('tech.sample1', 'رئیس نمونه — خدمات فنی فراورش یک', 'TECH_HEAD', 'CONFIDENTIAL', [p1.id, p2.id]);
+  const office1 = await mkUser('office.sample1', 'مسئول دفتر نمونه — رئیس اداره مهندسی عمومی', 'OFFICE_MGR', 'INTERNAL', [p1.id, p2.id]);
   const ctr1 = await mkUser('ctr.sample1', 'پیمانکار نمونه — پروژه الف', 'CONTRACTOR', 'INTERNAL', [p1.id]);
   const ctr2 = await mkUser('ctr.sample2', 'پیمانکار نمونه — پروژه ب', 'CONTRACTOR', 'INTERNAL', [p2.id]);
 
@@ -144,7 +147,7 @@ export async function createSampleData(orgId: string, adminId: string) {
       data: {
         organizationId: orgId, projectId: o.projectId,
         docNumber: normalizeCode(o.docNumber), docNumberRaw: o.docNumber,
-        title: o.title, discipline: o.discipline, docType: o.docType,
+        title: o.title, searchNorm: buildSearchNorm([o.title, normalizeCode(o.docNumber), o.docNumber]), discipline: o.discipline, docType: o.docType,
         unitId: o.unitId || null, confidentiality: o.confidentiality,
         status: o.revStatus === 'APPROVED' ? 'PUBLISHED' : 'IN_REVIEW',
         processingStatus: 'UPLOADED', extractionStatus: 'NOT_EXTRACTED', engineeringStatus: 'UNREVIEWED',

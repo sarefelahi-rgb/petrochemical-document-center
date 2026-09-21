@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { requireUser, buildAccessContext, jsonOk } from '@/lib/guard';
 import { allowedCategoriesFor } from '@/lib/permissions';
-import { normalizeCode, normalizeFa, candidateCodes, digitVariants } from '@/lib/normalize';
+import { normalizeCode, normalizeFa, candidateCodes, digitVariants, queryTokens, compactQuery } from '@/lib/normalize';
 import { snippetAround } from '@/lib/contentSearch';
 
 export async function GET(req: NextRequest) {
@@ -23,12 +23,19 @@ export async function GET(req: NextRequest) {
     confidentiality: { in: allowedConf },
   };
 
-  // ---------- جست‌وجو در متن صفحات (لایهٔ متن/OCR) ----------
+  // ---------- جست‌وجو در متن صفحات (لایهٔ متن/OCR) — فراگیر: کل عبارت یا هر واژه ----------
   if (scope === 'content') {
     const qNorm = normalizeFa(q);
     if (qNorm.length < 2) return jsonOk({ items: [], semantic: false, note: 'پرسش حداقل ۲ نویسه.' });
+    const cTokens = queryTokens(q);
     const pts = await db.pageText.findMany({
-      where: { textNormalized: { contains: qNorm }, file: { revision: { document: docWhere } } },
+      where: {
+        OR: [
+          { textNormalized: { contains: qNorm } },
+          ...cTokens.map((t) => ({ textNormalized: { contains: t } })),
+        ],
+        file: { revision: { document: docWhere } },
+      },
       include: {
         file: { select: { id: true, originalName: true, revision: { select: { document: { select: { id: true, docNumber: true, docNumberRaw: true, title: true, project: { select: { code: true } }, revisions: { orderBy: { createdAt: 'desc' }, take: 1, select: { revisionCode: true } } } } } } } },
       },
@@ -89,11 +96,20 @@ export async function GET(req: NextRequest) {
     take: limit,
   });
 
-  // ۲) جست‌وجوی واژگانی عنوان (نرمال‌شده) — ارقام فارسی/لاتین معادل‌اند و بزرگ/کوچکی تفکیک نمی‌شود
-  // عنوان در پایگاه‌داده متن خام است؛ برای هر عبارت هر دو فرم ارقام جست‌وجو می‌شود
+  // ۲) جست‌وجوی واژگانی عنوان — نمایهٔ searchNorm (کل عبارت + هر واژه) + گونه‌های ارقام/حروف
+  // عنوان در پایگاه‌داده متن خام است؛ searchNorm همان متن نرمال‌شده است (ی/ک/ارقام/فاصله/نیم‌فاصله یکسان)
   const titleVariants = faQ.length >= 2 ? Array.from(new Set(digitVariants(faQ).flatMap((v) => [v, v.toLowerCase()]))).slice(0, 4) : [];
-  const byTitle = titleVariants.length ? await db.document.findMany({
-    where: { ...docWhere, OR: titleVariants.map((v) => ({ title: { contains: v } })) },
+  const tTokens = queryTokens(q);
+  const qCompact = compactQuery(q);
+  const byTitle = (titleVariants.length || tTokens.length) ? await db.document.findMany({
+    where: {
+      ...docWhere,
+      OR: [
+        ...(qCompact.length >= 2 ? [{ searchNorm: { contains: qCompact } }] : []),
+        ...tTokens.map((t) => ({ searchNorm: { contains: t } })),
+        ...titleVariants.map((v) => ({ title: { contains: v } })),
+      ],
+    },
     include: { project: { select: { code: true } }, revisions: { orderBy: { createdAt: 'desc' }, take: 1, select: { revisionCode: true, status: true } } },
     take: limit,
     orderBy: { updatedAt: 'desc' },

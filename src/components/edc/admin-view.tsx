@@ -93,7 +93,7 @@ function CategoryPicker({ value, onChange, idPrefix }: { value: string | null; o
 function UsersTab() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [projects, setProjects] = useState<Proj[]>([]);
-  const [form, setForm] = useState({ username: '', fullName: '', role: 'ENGINEER', categoryAccess: JSON.stringify(['PUBLIC', 'INTERNAL']) as string | null, projects: [] as string[] });
+  const [form, setForm] = useState({ username: '', fullName: '', role: 'ENG_EXPERT', categoryAccess: JSON.stringify(['PUBLIC', 'INTERNAL']) as string | null, projects: [] as string[] });
   const [tempPw, setTempPw] = useState<{ username: string; password: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -119,7 +119,7 @@ function UsersTab() {
         },
       });
       setTempPw({ username: form.username, password: r.tempPassword });
-      setForm({ username: '', fullName: '', role: 'ENGINEER', categoryAccess: JSON.stringify(['PUBLIC', 'INTERNAL']), projects: [] });
+      setForm({ username: '', fullName: '', role: 'ENG_EXPERT', categoryAccess: JSON.stringify(['PUBLIC', 'INTERNAL']), projects: [] });
       load();
     } catch (e) {
       toast({ title: 'ایجاد کاربر ناموفق', description: (e as Error).message, variant: 'destructive' });

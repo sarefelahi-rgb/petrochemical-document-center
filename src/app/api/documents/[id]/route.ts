@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { requireUser, buildAccessContext, jsonOk, jsonError } from '@/lib/guard';
 import { can, canViewDocument } from '@/lib/permissions';
+import { buildSearchNorm } from '@/lib/normalize';
 
 async function getDocForUser(id: string, ctx: Awaited<ReturnType<typeof buildAccessContext>>) {
   const doc = await db.document.findUnique({
@@ -87,6 +88,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (key in body) data[key] = body[key] === '' ? null : body[key];
   }
   if ('title' in body && !String(body.title).trim()) return jsonError('عنوان نمی‌تواند خالی باشد.');
+  // به‌روزرسانی نمایهٔ جست‌وجوی فراگیر هنگام تغییر عنوان
+  if ('title' in data && typeof data.title === 'string' && data.title.trim()) {
+    data.searchNorm = buildSearchNorm([data.title, doc.docNumber, doc.docNumberRaw]);
+  }
   const updated = await db.document.update({ where: { id }, data });
   await import('@/lib/audit').then((m) => m.audit({
     organizationId: ctx.organizationId,

@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { requireUser, buildAccessContext, jsonOk, jsonError } from '@/lib/guard';
 import { can } from '@/lib/permissions';
+import { searchVariants } from '@/lib/normalize';
 import { audit } from '@/lib/audit';
 
 export async function GET(req: NextRequest) {
@@ -12,10 +13,12 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const q = (url.searchParams.get('q') || '').trim();
 
+  // جست‌وجوی فراگیر: هر شیوهٔ نگارش (حروف عربی/فارسی، ارقام، فاصله/نیم‌فاصله) نتیجهٔ یکسان می‌دهد
+  const qVars = q ? searchVariants(q) : [];
   const rows = await db.transmittal.findMany({
     where: {
       organizationId: ctx.organizationId,
-      ...(q ? { OR: [{ number: { contains: q } }, { party: { contains: q } }, { purpose: { contains: q } }] } : {}),
+      ...(qVars.length ? { OR: qVars.flatMap((v) => [{ number: { contains: v } }, { party: { contains: v } }, { purpose: { contains: v } }]) } : {}),
     },
     orderBy: { createdAt: 'desc' },
     include: { items: { select: { id: true } } },

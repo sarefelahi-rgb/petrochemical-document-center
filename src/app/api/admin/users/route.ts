@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 import { requireUser, jsonOk, jsonError, getClientIp } from '@/lib/guard';
 import { hashPassword, passwordPolicyError, randomToken } from '@/lib/auth';
 import { audit } from '@/lib/audit';
-import { CLEARANCE_ORDER } from '@/lib/permissions';
+import { CLEARANCE_ORDER, ROLES } from '@/lib/permissions';
 
 function normalizeCategoryAccess(v: unknown): string | null {
   if (v === 'ALL' || v === 'all') return 'ALL';
@@ -54,6 +54,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const { username, fullName, role, clearance, categoryAccess, projectIds, isSample } = body || {};
   if (!username?.trim() || !fullName?.trim() || !role) return jsonError('نام کاربری، نام کامل و نقش الزامی است.');
+  // فقط ۶ نقش رسمی سامانه پذیرفته می‌شود
+  if (!Object.keys(ROLES).includes(role)) return jsonError('نقش نامعتبر است. نقش‌های مجاز: مدیر سامانه، کارشناس اداره مهندسی عمومی، رئیس اداره مهندسی عمومی، رئیس خدمات فنی فراورش یک، مسئول دفتر رئیس اداره مهندسی عمومی، پیمانکار.');
   const uname = username.trim().toLowerCase();
   if (!/^[a-z0-9._-]{3,30}$/.test(uname)) return jsonError('نام کاربری: ۳ تا ۳۰ نویسه لاتین/عدد/نقطه/خط تیره.');
   const dup = await db.user.findUnique({ where: { username: uname } });
@@ -107,7 +109,10 @@ export async function PATCH(req: NextRequest) {
   } else if (clearance) {
     data.clearance = clearance;
   }
-  if (role) data.role = role;
+  if (role) {
+    if (!Object.keys(ROLES).includes(role)) return jsonError('نقش نامعتبر است.');
+    data.role = role;
+  }
   if (unlock) { data.lockedUntil = null; data.failedAttempts = 0; }
   await db.user.update({ where: { id }, data });
 

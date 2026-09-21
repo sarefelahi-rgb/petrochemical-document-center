@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Home, FolderOpen, Bot, ClipboardList, BarChart3, Settings, LogOut, Moon, Sun, KeyRound, ScanSearch, FolderSearch, FileStack, Inbox } from 'lucide-react';
 import { api, ROLE_LABELS } from './api';
+import { APP_NAME } from '@/lib/app-name';
 import { HomeView } from './home-view';
 import { DocumentCenter } from './document-center';
 import { DocumentDetail } from './document-detail';
@@ -27,9 +28,10 @@ export interface MeInfo {
   projectCount: number;
 }
 
-// ناوبری گروهی — ۹ گزینه پراکنده → ۳ خوشهٔ معنایی ساده + دستیار در رأس
+// ناوبری گروهی — «نمای کلی» اولین منو؛ سپس دستیار و مرکز اسناد؛ سه خوشهٔ معنایی ساده
 const NAV_GROUPS: Array<{ caption: string | null; items: Array<{ key: string; label: string; icon: React.ComponentType<{ className?: string }> }> }> = [
   { caption: null, items: [
+    { key: 'home', label: 'نمای کلی', icon: Home },
     { key: 'assistant', label: 'دستیار هوشمند', icon: Bot },
     { key: 'documents', label: 'مرکز اسناد', icon: FolderOpen },
   ] },
@@ -42,7 +44,6 @@ const NAV_GROUPS: Array<{ caption: string | null; items: Array<{ key: string; la
     { key: 'intake', label: 'پذیرش اسناد', icon: Inbox },
     { key: 'dossier', label: 'پروندهٔ تجهیز', icon: FolderSearch },
     { key: 'reports', label: 'گزارش‌ها', icon: BarChart3 },
-    { key: 'home', label: 'نمای کلی', icon: Home },
   ] },
 ];
 
@@ -57,7 +58,7 @@ export function AppShell({ me, onLogout, goHome }: { me: MeInfo; onLogout: () =>
   const [newPw, setNewPw] = useState('');
   const [newPw2, setNewPw2] = useState('');
   const [pwError, setPwError] = useState('');
-  const [appName, setAppName] = useState('مرکز هوشمند اسناد مهندسی');
+  const [appName, setAppName] = useState(APP_NAME);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -193,7 +194,8 @@ export function AppShell({ me, onLogout, goHome }: { me: MeInfo; onLogout: () =>
 
       <footer className="mt-auto">
         <div className="max-w-7xl mx-auto px-4 py-3 text-[11px] text-muted-foreground flex flex-wrap justify-between gap-2">
-          <span>{appName} — مدیریت اسناد و نقشه‌های پتروشیمی</span>
+          <span>{appName}</span>
+          <span>اداره مهندسی عمومی فراورش یک — مدیریت اسناد و نقشه‌های مهندسی</span>
           <span>دستیار یادگیرنده · OCR چندگذره · گردش تأیید · کنترل مدارک</span>
         </div>
       </footer>

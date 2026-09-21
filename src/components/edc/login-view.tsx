@@ -56,8 +56,8 @@ export function LoginView({ onLoggedIn }: { onLoggedIn: (mustChange: boolean) =>
       <div className="w-full max-w-md space-y-4">
         <div className="text-center space-y-2">
           <div className="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-600 to-teal-800 text-white flex items-center justify-center text-2xl font-bold shadow-xl shadow-teal-700/30">س</div>
-          <h1 className="text-2xl font-bold">مرکز هوشمند اسناد مهندسی</h1>
-          <p className="text-sm text-muted-foreground">سامانه سازمانی مدیریت اسناد و نقشه‌های پتروشیمی</p>
+          <h1 className="text-2xl font-bold leading-relaxed">مرکز هوشمند اسناد اداره مهندسی عمومی فراورش یک</h1>
+          <p className="text-sm text-muted-foreground">سامانه سازمانی مدیریت اسناد و نقشه‌های مهندسی</p>
         </div>
 
         {stage.kind === 'form' && (

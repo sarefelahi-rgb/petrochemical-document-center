@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { requireUser, buildAccessContext, jsonOk, jsonError } from '@/lib/guard';
 import { can, allowedCategoriesFor } from '@/lib/permissions';
-import { normalizeCode, normalizeFa, candidateCodes, digitVariants } from '@/lib/normalize';
+import { normalizeCode, normalizeFa, candidateCodes, digitVariants, queryTokens, buildSearchNorm, compactQuery } from '@/lib/normalize';
 
 export async function GET(req: NextRequest) {
   const auth = await requireUser();
@@ -42,14 +42,21 @@ export async function GET(req: NextRequest) {
   if (status) where.status = status;
   if (confidentiality) where.confidentiality = confidentiality;
 
-  // جست‌وجو: دقیق روی شماره (نرمال‌شده، توکن‌به‌توکن) یا واژگانی روی عنوان
-  // ارقام فارسی/لاتین معادل‌اند؛ بزرگ/کوچکی حروف لاتین تفکیک نمی‌شود
+  // جست‌وجوی فراگیر (۱۴۰۵): بزرگ/کوچکی، ارقام فارسی/لاتین/عربی، حروف عربی/فارسی (ي/ی ك/ک)،
+  // نیم‌فاصله/فاصله/بی‌فاصله، علائم نگارشی — همه یکسان رفتار می‌کنند.
+  //  - شماره سند: کاندیدهای کد روی docNumber (نرمال‌شده) و docNumberRaw (خام با هر دو فرم ارقام)
+  //  - عنوان/شماره: نمایهٔ searchNorm (کل عبارت + هر واژه) و گونه‌های خام عنوان
   if (q) {
     const codes = candidateCodes(q);
     const faQ = normalizeFa(q);
-    const titleVariants = Array.from(new Set(digitVariants(faQ).flatMap((v) => [v, v.toLowerCase()]))).slice(0, 4);
+    const qCompact = compactQuery(q);
+    const tokens = queryTokens(q);
+    const titleVariants = Array.from(new Set(digitVariants(faQ).flatMap((v) => [v, v.toLowerCase()]))).slice(0, 6);
     where.OR = [
       ...codes.map((c) => ({ docNumber: { contains: c } })),
+      ...codes.flatMap((c) => digitVariants(c).map((v) => ({ docNumberRaw: { contains: v } }))),
+      ...(qCompact.length >= 2 ? [{ searchNorm: { contains: qCompact } }] : []),
+      ...tokens.map((t) => ({ searchNorm: { contains: t } })),
       ...titleVariants.map((v) => ({ title: { contains: v } })),
     ];
   }
@@ -126,6 +133,7 @@ export async function POST(req: NextRequest) {
       docNumber: docNumberNorm,
       docNumberRaw: docNumber.trim(),
       title: title.trim(),
+      searchNorm: buildSearchNorm([title.trim(), docNumberNorm, docNumber.trim()]),
       discipline: discipline || 'UNK',
       docType: docType || 'OTHER',
       unitId: unitId || null,

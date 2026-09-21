@@ -149,6 +149,7 @@ CREATE TABLE "Document" (
     "docNumber" TEXT NOT NULL,
     "docNumberRaw" TEXT,
     "title" TEXT NOT NULL,
+    "searchNorm" TEXT,
     "discipline" TEXT NOT NULL,
     "docType" TEXT NOT NULL,
     "unitId" TEXT,

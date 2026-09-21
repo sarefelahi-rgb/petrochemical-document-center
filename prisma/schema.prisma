@@ -28,7 +28,7 @@ model User {
   username           String    @unique
   passwordHash       String
   fullName           String
-  role               String // ADMIN | DOC_CONTROLLER | ENGINEER | REVIEWER | APPROVER | OPERATOR | CONTRACTOR | AUDITOR
+  role               String // ADMIN | ENG_EXPERT | ENG_HEAD | TECH_HEAD | OFFICE_MGR | CONTRACTOR
   clearance          String    @default("INTERNAL") // PUBLIC | INTERNAL | CONFIDENTIAL | RESTRICTED
   organizationId     String
   organization       Organization @relation(fields: [organizationId], references: [id])
@@ -191,6 +191,7 @@ model Document {
   docNumber      String
   docNumberRaw   String?  // عین متن ورودی — کدهای مهندسی تغییر نمی‌کنند
   title          String
+  searchNorm     String?  // نمایهٔ جست‌وجوی فراگیر: normalizeFa(عنوان + شماره‌ها) — بزرگ/کوچکی، ارقام، حروف عربی/فارسی و فاصله‌ها یکسان
   discipline     String   // RST: واژگان کنترل‌شده
   docType        String
   unitId         String?

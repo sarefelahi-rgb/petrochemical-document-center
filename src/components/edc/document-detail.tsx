@@ -51,8 +51,8 @@ export function DocumentDetail({ docId, go, openPageTarget }: { docId: string; g
     api<Me>('/api/auth/me').then(setMe).catch(() => {});
   }, [load]);
 
-  const isManager = me?.user.role === 'ADMIN' || me?.user.role === 'DOC_CONTROLLER';
-  const canEdit = me?.user.role === 'ADMIN' || me?.user.role === 'DOC_CONTROLLER' || me?.user.role === 'ENGINEER';
+  const isManager = me?.user.role === 'ADMIN' || me?.user.role === 'ENG_HEAD';
+  const canEdit = me?.user.role === 'ADMIN' || me?.user.role === 'ENG_EXPERT';
 
   // بازکردن نمایشگر با هدف صفحه/هایلایت (لینک صفحه از ارجاع‌ها یا URL)
   function openViewerFile(f: DocDetail['revisions'][number]['files'][number], r: DocDetail['revisions'][number], target?: { page?: number; rect?: [number, number, number, number] | null; query?: string | null }) {

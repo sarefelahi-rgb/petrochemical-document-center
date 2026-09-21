@@ -1,9 +1,12 @@
 // تنظیمات سامانه (نام سازمان، رنگ سازمانی، سهمیه‌ها) + محدودیت نرخ حافظه‌ای
 import { db } from '@/lib/db';
+import { APP_NAME, LEGACY_APP_NAMES } from '@/lib/app-name';
+
+export { APP_NAME, LEGACY_APP_NAMES };
 
 export const DEFAULT_SETTINGS: Record<string, string> = {
-  'app.name': 'مرکز هوشمند اسناد مهندسی',
-  'app.orgName': 'مجتمع پتروشیمی بندر امام (نمونه)',
+  'app.name': APP_NAME,
+  'app.orgName': 'اداره مهندسی عمومی فراورش یک',
   'app.primaryColor': '#0f766e',
   'app.accentColor': '#b45309',
   'upload.maxMb': '120',

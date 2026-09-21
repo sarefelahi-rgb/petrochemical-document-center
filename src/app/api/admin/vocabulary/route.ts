@@ -48,7 +48,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const auth = await requireUser();
   if ('resp' in auth) return auth.resp;
-  if (!['ADMIN', 'DOC_CONTROLLER'].includes(auth.user.role)) return jsonError('اجازه مدیریت واژگان را ندارید.', 403, 'FORBIDDEN');
+  if (!['ADMIN', 'ENG_EXPERT', 'ENG_HEAD'].includes(auth.user.role)) return jsonError('اجازه مدیریت واژگان را ندارید.', 403, 'FORBIDDEN');
   const body = await req.json().catch(() => null);
   const { domain, code, label } = body || {};
   if (!['DISCIPLINE', 'DOC_TYPE', 'ORIGIN'].includes(domain)) return jsonError('دامنه واژگان نامعتبر است.');

@@ -14,7 +14,7 @@ import { db } from '@/lib/db';
 import type { Prisma } from '@prisma/client';
 import { requireUser, buildAccessContext, jsonOk, jsonError } from '@/lib/guard';
 import { allowedCategoriesFor } from '@/lib/permissions';
-import { normalizeFa, candidateCodes, digitVariants } from '@/lib/normalize';
+import { normalizeFa, candidateCodes, digitVariants, compactQuery } from '@/lib/normalize';
 import { finglishExpansion, finglishNoteForModel, dominantLanguage, reverseExpansion } from '@/lib/finglish';
 import { snippetAround } from '@/lib/contentSearch';
 import { audit } from '@/lib/audit';
@@ -335,8 +335,8 @@ ${(af.textContent || '').slice(0, 120000)}`,
       codes.length
         ? db.document.findMany({ where: { ...baseDocWhere, OR: codes.map((c) => ({ docNumber: { contains: c } })) }, include: { project: { select: { code: true } }, revisions: { orderBy: { createdAt: 'desc' }, take: 1, select: { revisionCode: true, status: true } } }, take: 6 })
         : Promise.resolve([]),
-      titleVars.length
-        ? db.document.findMany({ where: { ...baseDocWhere, OR: titleVars.map((v) => ({ title: { contains: v } })) }, include: { project: { select: { code: true } }, revisions: { orderBy: { createdAt: 'desc' }, take: 1, select: { revisionCode: true, status: true } } }, take: 6 })
+      titleVars.length || faQ.length >= 2
+        ? db.document.findMany({ where: { ...baseDocWhere, OR: [...titleVars.map((v) => ({ title: { contains: v } })), ...(compactQuery(faQ).length >= 2 ? [{ searchNorm: { contains: compactQuery(faQ) } }] : [])] }, include: { project: { select: { code: true } }, revisions: { orderBy: { createdAt: 'desc' }, take: 1, select: { revisionCode: true, status: true } } }, take: 6 })
         : Promise.resolve([]),
       codes.length
         ? db.docLink.findMany({

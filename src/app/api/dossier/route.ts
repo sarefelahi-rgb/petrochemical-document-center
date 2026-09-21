@@ -3,7 +3,7 @@
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { requireUser, buildAccessContext, jsonOk, jsonError } from '@/lib/guard';
-import { normalizeFa } from '@/lib/normalize';
+import { normalizeFa, toLatinDigits, toPersianDigits } from '@/lib/normalize';
 import { audit } from '@/lib/audit';
 
 export async function GET(req: NextRequest) {
@@ -13,14 +13,18 @@ export async function GET(req: NextRequest) {
   const ref = (req.nextUrl.searchParams.get('ref') || '').trim();
   if (!ref) return jsonError('Tag تجهیز یا شماره خط را وارد کنید.');
   const norm = normalizeFa(ref).toUpperCase();
+  // گونه‌های کد: لاتین بزرگ (فرم نرمال کد) + ارقام فارسی — تا Tag/Line با هر نگارشی پیدا شود
+  const latinUp = toLatinDigits(ref).trim().toUpperCase();
+  const persianForm = toPersianDigits(ref).trim();
+  const normVars = Array.from(new Set([norm, latinUp, persianForm, ref.trim()])).filter(Boolean);
 
   const allowedConf = ['PUBLIC', 'INTERNAL', 'CONFIDENTIAL', 'RESTRICTED'].slice(
     0, ({ PUBLIC: 1, INTERNAL: 2, CONFIDENTIAL: 3, RESTRICTED: 4 } as Record<string, number>)[ctx.clearance] || 2,
   );
 
   // یافتن تجهیز یا خط
-  const tag = await db.assetTag.findFirst({ where: { OR: [{ tag: { contains: norm } }, { tag: ref }] } });
-  const line = await db.line.findFirst({ where: { lineNumber: { contains: norm } }, include: { unit: { include: { area: { include: { project: true } } } } } });
+  const tag = await db.assetTag.findFirst({ where: { OR: normVars.flatMap((v) => [{ tag: { contains: v } }, { tag: v }]) } });
+  const line = await db.line.findFirst({ where: { OR: normVars.map((v) => ({ lineNumber: { contains: v } })) }, include: { unit: { include: { area: { include: { project: true } } } } } });
 
   // مجوز: خط باید در پروژهٔ مجاز باشد
   const allowedProjects = Array.from(ctx.projectIds);
@@ -33,7 +37,7 @@ export async function GET(req: NextRequest) {
       OR: [
         ...(tag ? [{ tagId: tag.id }] : []),
         ...(lineVisible ? [{ lineId: lineVisible.id }] : []),
-        { rawRef: { contains: norm } },
+        ...normVars.map((v) => ({ rawRef: { contains: v } })),
       ],
       document: { organizationId: ctx.organizationId, projectId: { in: allowedProjects }, confidentiality: { in: allowedConf } },
     },

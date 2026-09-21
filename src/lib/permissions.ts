@@ -1,15 +1,14 @@
 // کنترل دسترسی RBAC + ABAC — منع پیش‌فرض
 // مشاهده شناسنامه / مشاهده محتوا / دانلود اصل / بارگذاری / اصلاح / حذف / مدیریت = مجوزهای جدا
+// نقش‌های سامانه (تصمیم بهره‌بردار ۱۴۰۵): فقط ۶ نقش رسمی اداره مهندسی عمومی فراورش یک
 
 export const ROLES = {
   ADMIN: 'مدیر سامانه',
-  DOC_CONTROLLER: 'مدیر اسناد',
-  ENGINEER: 'مهندس رشته',
-  REVIEWER: 'بازبین',
-  APPROVER: 'تأییدکننده',
-  OPERATOR: 'بهره‌بردار',
+  ENG_EXPERT: 'کارشناس اداره مهندسی عمومی',
+  ENG_HEAD: 'رئیس اداره مهندسی عمومی',
+  TECH_HEAD: 'رئیس خدمات فنی فراورش یک',
+  OFFICE_MGR: 'مسئول دفتر رئیس اداره مهندسی عمومی',
   CONTRACTOR: 'پیمانکار',
-  AUDITOR: 'ممیز',
 } as const;
 
 export type Role = keyof typeof ROLES;
@@ -33,13 +32,11 @@ export const CLEARANCE_LABELS: Record<string, string> = {
 // processing:manage = مدیریت صف پردازش/بازپردازش — مرحله B
 const ROLE_CAPS: Record<string, string[]> = {
   ADMIN: ['doc:view', 'doc:content', 'doc:download', 'doc:upload', 'doc:edit', 'doc:delete', 'doc:review', 'admin:manage', 'processing:manage', 'audit:view', 'reports:view', 'cartable:view'],
-  DOC_CONTROLLER: ['doc:view', 'doc:content', 'doc:download', 'doc:upload', 'doc:edit', 'doc:delete', 'doc:review', 'processing:manage', 'reports:view', 'cartable:view', 'vocab:view'],
-  ENGINEER: ['doc:view', 'doc:content', 'doc:download', 'doc:upload', 'doc:edit', 'doc:review', 'reports:view', 'cartable:view'],
-  REVIEWER: ['doc:view', 'doc:content', 'doc:download', 'doc:review', 'reports:view', 'cartable:view'],
-  APPROVER: ['doc:view', 'doc:content', 'doc:download', 'doc:review', 'reports:view', 'cartable:view'],
-  OPERATOR: ['doc:view', 'doc:content', 'cartable:view'],
+  ENG_EXPERT: ['doc:view', 'doc:content', 'doc:download', 'doc:upload', 'doc:edit', 'doc:review', 'processing:manage', 'reports:view', 'cartable:view', 'vocab:view'],
+  ENG_HEAD: ['doc:view', 'doc:content', 'doc:download', 'doc:review', 'reports:view', 'cartable:view', 'vocab:view'],
+  TECH_HEAD: ['doc:view', 'doc:content', 'doc:download', 'doc:review', 'reports:view', 'cartable:view'],
+  OFFICE_MGR: ['doc:view', 'doc:content', 'doc:download', 'doc:upload', 'cartable:view'],
   CONTRACTOR: ['doc:view', 'doc:content', 'doc:upload', 'cartable:view'],
-  AUDITOR: ['doc:view', 'audit:view', 'reports:view', 'cartable:view'],
 };
 
 export function roleHas(role: string, cap: string): boolean {
@@ -90,6 +87,6 @@ export function can(ctx: AccessContext, cap: string, doc?: { organizationId: str
       if (ctx.role === 'CONTRACTOR') return false;
     }
   }
-  if ((cap === 'doc:edit' || cap === 'doc:delete' || cap === 'admin:manage' || cap === 'doc:upload') && ctx.role === 'AUDITOR') return false;
+  if ((cap === 'doc:edit' || cap === 'doc:delete' || cap === 'admin:manage' || cap === 'doc:upload') && !(ctx.role in ROLE_CAPS)) return false;
   return true;
 }
