@@ -5,6 +5,7 @@ import { hashPassword, randomToken } from '@/lib/auth';
 import { storeOriginal, ensureDirs } from '@/lib/storage';
 import { normalizeCode, buildSearchNorm } from '@/lib/normalize';
 import { enqueuePipelineForFile } from '@/lib/jobs';
+import { PLANT_UNITS } from '@/lib/plant-map';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -190,6 +191,9 @@ export async function createSampleData(orgId: string, adminId: string) {
   await db.setting.upsert({ where: { key: 'app.sampleDataPresent' }, update: { value: 'true' }, create: { key: 'app.sampleDataPresent', value: 'true' } });
   await db.auditEvent.create({ data: { organizationId: orgId, actorId: adminId, action: 'SAMPLE_DATA_CREATE', detail: 'برچسب نمونه — قابل حذف کامل' } });
 
+  // پیوند نقشهٔ تعاملی مجتمع: برای هر تجهیز نقشه، اسناد نمونه بساز و پیوند بزن
+  await seedPlantMapSampleData(orgId);
+
   return {
     created: true,
     projects: [p1.code, p2.code],
@@ -201,4 +205,94 @@ export async function createSampleData(orgId: string, adminId: string) {
     ],
     note: 'کاربران نمونه رمز تصادفی دارند که عمداً نمایش داده نمی‌شود؛ برای آزمون انزوا از پنل مدیر برای آن‌ها رمز جدید تعیین کنید یا کاربر واقعی بسازید.',
   };
+}
+
+// دادهٔ نمونهٔ نقشهٔ تعاملی مجتمع — idempotent: در استقرار تازه و پایگاه موجود هم قابل اجراست
+// برای هر واحد نقشه: یک P&ID و یک دیتاشیت نمونه می‌سازد و همهٔ تجهیزات آن واحد را به آن‌ها پیوند می‌زند
+export async function seedPlantMapSampleData(orgId: string) {
+  ensureDirs();
+  const admin = await db.user.findFirst({ where: { role: 'ADMIN' }, orderBy: { createdAt: 'asc' } });
+  if (!admin) return { created: false, reason: 'admin-not-found' };
+
+  // پروژهٔ میزبان — از نمونهٔ موجود استفاده می‌شود؛ وگرنه ساخته می‌شود
+  let project = await db.project.findFirst({ where: { isSample: true, code: 'PRJ-BI-1403' } });
+  if (!project) {
+    project = await db.project.create({ data: { organizationId: orgId, code: 'PRJ-BI-1403', name: 'پروژه بهسازی واحد الف (نمونه)', isSample: true, description: 'داده آزمایشی با برچسب «نمونه» — قابل حذف کامل از همین بخش' } });
+  }
+  let area = await db.area.findFirst({ where: { projectId: project.id, code: 'AREA-100' } });
+  if (!area) {
+    area = await db.area.create({ data: { projectId: project.id, code: 'AREA-100', name: 'ناحیه ۱۰۰ — نمونه' } });
+  }
+  let hostUnit = await db.unit.findFirst({ where: { areaId: area.id, code: 'U-110' } });
+  if (!hostUnit) {
+    hostUnit = await db.unit.create({ data: { areaId: area.id, code: 'U-110', name: 'واحد ۱۱۰ — نمونه' } });
+  }
+
+  const sampleLabel = ['نمونهٔ آموزشی — داده واقعی نیست', 'مجتمع پتروشیمی بندر امام — دادهٔ نقشهٔ تعاملی'];
+  const titleLine = (docNumber: string, rev: string) => `DOC NO: ${docNumber}  REV: ${rev}  SHEET 1 OF 1  SCALE: NTS`;
+
+  // ساخت (یا یافتن) جفت سند هر واحد روی نقشه
+  const ensureDoc = async (o: { docNumber: string; title: string; docType: string; discipline: string; rev: string; tagLine: string }) => {
+    const existing = await db.document.findFirst({ where: { organizationId: orgId, projectId: project.id, docNumber: normalizeCode(o.docNumber) } });
+    if (existing) return existing;
+    const doc = await db.document.create({
+      data: {
+        organizationId: orgId, projectId: project.id,
+        docNumber: normalizeCode(o.docNumber), docNumberRaw: o.docNumber,
+        title: o.title, searchNorm: buildSearchNorm([o.title, normalizeCode(o.docNumber), o.docNumber]),
+        discipline: o.discipline, docType: o.docType, unitId: hostUnit.id,
+        confidentiality: 'INTERNAL', status: o.rev === '0' ? 'IN_REVIEW' : 'PUBLISHED',
+        processingStatus: 'UPLOADED', extractionStatus: 'NOT_EXTRACTED', engineeringStatus: 'UNREVIEWED',
+        isSample: true, createdById: admin.id,
+      },
+    });
+    const rev = await db.revision.create({ data: { documentId: doc.id, revisionCode: o.rev, status: 'APPROVED', purpose: 'AFB — نمونه', isSample: true, receivedDate: new Date() } });
+    await db.document.update({ where: { id: doc.id }, data: { currentRevisionId: rev.id, validRevisionId: rev.id } });
+    const stored = await putFile({ orgId, name: `${o.docNumber}-R${o.rev}.pdf`, lines: [...sampleLabel, o.docType === 'PID' ? 'P&ID (SAMPLE)' : 'DATASHEET (SAMPLE)', titleLine(o.docNumber, o.rev), o.tagLine], uploaderId: admin.id, userIdsInProject: [] });
+    await db.fileObject.create({
+      data: {
+        revisionId: rev.id, kind: 'ORIGINAL', storageKey: stored.storageKey,
+        originalName: `${o.docNumber}-R${o.rev}.pdf`, mimeType: 'application/pdf', size: stored.size,
+        sha256: stored.sha256, scanStatus: 'CLEAN', scanNote: 'PDF', isSample: true, uploadedById: admin.id,
+      },
+    });
+    await enqueuePipelineForFile(await db.fileObject.findFirst({ where: { revisionId: rev.id, kind: 'ORIGINAL' }, orderBy: { createdAt: 'desc' }, take: 1 }).then((f) => f!.id));
+    return doc;
+  };
+
+  let linkedTags = 0;
+  for (const u of PLANT_UNITS) {
+    const pid = await ensureDoc({
+      docNumber: `MAP-${u.code}-PID-0001`,
+      title: `P&ID ${u.name} — نمونهٔ نقشهٔ تعاملی`,
+      docType: 'PID', discipline: 'PROCESS', rev: '1',
+      tagLine: `UNIT: ${u.code} - INTERACTIVE MAP SAMPLE`,
+    });
+    const ds = await ensureDoc({
+      docNumber: `MAP-${u.code}-DS-0001`,
+      title: `دیتاشیت تجهیزات ${u.name} — نمونهٔ نقشهٔ تعاملی`,
+      docType: 'DATASHEET', discipline: 'MECH', rev: '0',
+      tagLine: `UNIT: ${u.code} - EQUIPMENT DATASHEET SAMPLE`,
+    });
+
+    for (const a of u.areas) {
+      for (const eq of a.equipment) {
+        const tag = await db.assetTag.upsert({
+          where: { tag: normalizeCode(eq.tag) },
+          update: { isSample: true, description: `${eq.name} — ${u.name}` },
+          create: { tag: normalizeCode(eq.tag), description: `${eq.name} — ${u.name}`, tagType: 'EQUIPMENT', isSample: true },
+        });
+        for (const doc of [pid, ds]) {
+          const exists = await db.docLink.findFirst({ where: { documentId: doc.id, tagId: tag.id } });
+          if (!exists) {
+            await db.docLink.create({ data: { documentId: doc.id, linkType: 'TAG', tagId: tag.id, linkStatus: 'CONFIRMED', isSample: true } });
+          }
+        }
+        linkedTags++;
+      }
+    }
+  }
+
+  await db.setting.upsert({ where: { key: 'app.mapSamplePresent' }, update: { value: 'true' }, create: { key: 'app.mapSamplePresent', value: 'true' } });
+  return { created: true, linkedTags };
 }

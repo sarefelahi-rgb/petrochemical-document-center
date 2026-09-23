@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Home, FolderOpen, Bot, ClipboardList, BarChart3, Settings, LogOut, Moon, Sun, KeyRound, ScanSearch, FolderSearch, FileStack, Inbox } from 'lucide-react';
+import { Home, FolderOpen, Bot, ClipboardList, BarChart3, Settings, LogOut, Moon, Sun, KeyRound, ScanSearch, FolderSearch, FileStack, Inbox, Palette } from 'lucide-react';
 import { api, ROLE_LABELS } from './api';
 import { APP_NAME } from '@/lib/app-name';
+import { applyThemeFromStorage } from '@/lib/theme';
+import { ThemeSettings } from './theme-settings';
 import { HomeView } from './home-view';
 import { DocumentCenter } from './document-center';
 import { DocumentDetail } from './document-detail';
@@ -59,6 +61,7 @@ export function AppShell({ me, onLogout, goHome }: { me: MeInfo; onLogout: () =>
   const [newPw2, setNewPw2] = useState('');
   const [pwError, setPwError] = useState('');
   const [appName, setAppName] = useState(APP_NAME);
+  const [themeOpen, setThemeOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -101,6 +104,8 @@ export function AppShell({ me, onLogout, goHome }: { me: MeInfo; onLogout: () =>
     setDark(next);
     document.documentElement.classList.toggle('dark', next);
     localStorage.setItem('edc_theme', next ? 'dark' : 'light');
+    // رنگ سازمانی برای حالت روشن/تیره متفاوت است — دوباره اعمال می‌شود
+    applyThemeFromStorage();
   }
 
   async function submitPassword() {
@@ -142,6 +147,9 @@ export function AppShell({ me, onLogout, goHome }: { me: MeInfo; onLogout: () =>
             <span className="hidden md:inline text-xs text-muted-foreground truncate">— {me.orgName}</span>
           </div>
           <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={() => setThemeOpen(true)} aria-label="تنظیمات ظاهری (رنگ و فونت)">
+              <Palette className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={dark ? 'زمینه روشن' : 'زمینه تیره'}>
               {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
@@ -199,6 +207,9 @@ export function AppShell({ me, onLogout, goHome }: { me: MeInfo; onLogout: () =>
           <span>دستیار یادگیرنده · OCR چندگذره · گردش تأیید · کنترل مدارک</span>
         </div>
       </footer>
+
+      {/* تنظیمات ظاهری: رنگ سازمانی، فونت، اندازهٔ متن — فقط هنگام باز بودن سوار می‌شود */}
+      {themeOpen && <ThemeSettings open onOpenChange={setThemeOpen} />}
 
       {/* تغییر اجباری/اختیاری رمز */}
       <Dialog open={pwOpen} onOpenChange={(o) => { if (me.user.mustChangePassword) return; setPwOpen(o); }}>

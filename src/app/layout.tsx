@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { getThemeBootScript } from "@/lib/theme";
 
 export const metadata: Metadata = {
   title: "مرکز هوشمند اسناد اداره مهندسی عمومی فراورش یک",
@@ -20,6 +21,8 @@ export default function RootLayout({
   return (
     <html lang="fa" dir="rtl" suppressHydrationWarning>
       <body className="antialiased bg-background text-foreground min-h-screen">
+        {/* اعمال تم ذخیره‌شده (رنگ/فونت/اندازه/تیره) پیش از اولین رنگ‌آمیزی — ضد-فلش */}
+        <script dangerouslySetInnerHTML={{ __html: getThemeBootScript() }} />
         {children}
         <Toaster />
       </body>

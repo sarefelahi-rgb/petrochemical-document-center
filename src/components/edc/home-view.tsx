@@ -1,5 +1,5 @@
 'use client';
-// صفحه اصلی — سه اقدام اصلی + کارتابل + مدارک اخیر + نیازمند بررسی + وضعیت پردازش
+// نمای کلی — نقشهٔ تعاملی پتروشیمی بندر امام (واحد → منطقه → تجهیز → اسناد) + دسترسی سریع و وضعیت سامانه
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Search, Upload, MessageSquareText, ClipboardList, FileClock, AlertTrian
 import { api, fmtJalali } from './api';
 import { toPersianDigits as toFa } from '@/lib/normalize';
 import { StatusBadge, ConfBadge, SampleBadge } from './badges';
+import { PlantMapView } from './plant-map-view';
 
 interface HomeData {
   openTasks: number;
@@ -33,10 +34,15 @@ export function HomeView({ userName, go }: { userName: string; go: (view: string
 
   return (
     <div className="space-y-6" data-testid="home-view">
-      <div className="rounded-2xl glass glass-sheen p-6">
+      <div className="glass rounded-2xl p-5">
         <h1 className="text-xl font-bold">سلام، <span dir="auto">{userName}</span></h1>
-        <p className="text-sm text-muted-foreground mt-1">سه اقدام اصلی — از خانه تا نتیجه حداکثر سه گام</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          از نقشهٔ مجتمع شروع کنید: واحد، منطقه و تجهیز را انتخاب کنید تا نقشه‌ها و مدارک مربوط باز شود.
+        </p>
       </div>
+
+      {/* نقشهٔ تعاملی مجتمع */}
+      <PlantMapView go={go} />
 
       {/* سه اقدام اصلی */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -44,11 +50,11 @@ export function HomeView({ userName, go }: { userName: string; go: (view: string
           <button
             key={a.key}
             onClick={() => go(a.key)}
-            className="group text-right rounded-2xl glass glass-sheen p-6 transition-all hover:shadow-lg hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-ring"
+            className="group text-right rounded-2xl glass p-5 transition-all hover:shadow-md hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <a.icon className="h-8 w-8 text-primary mb-3" aria-hidden />
-            <div className="font-bold group-hover:text-primary">{a.title}</div>
-            <div className="text-sm text-muted-foreground mt-1">{a.desc}</div>
+            <a.icon className="h-6 w-6 text-primary mb-2" aria-hidden />
+            <div className="font-bold text-sm group-hover:text-primary">{a.title}</div>
+            <div className="text-xs text-muted-foreground mt-1">{a.desc}</div>
           </button>
         ))}
       </div>
