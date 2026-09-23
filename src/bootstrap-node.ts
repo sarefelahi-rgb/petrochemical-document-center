@@ -189,6 +189,26 @@ async function runMigrations(db: unknown): Promise<void> {
         console.log(`[bootstrap] نمایهٔ جست‌وجوی ${missing.length} سند ${needsFullRebuild ? '(بازسازی کامل)' : 'ساخته'} شد.`);
       }
     });
+
+    // هـ) بذرکاری ساختار نقشهٔ شماتیک — فقط اگر جدول MapNode خالی باشد تا تنظیمات ادمین حفظ شود
+    await step('mapNodes:seed', async () => {
+      const anyClient = client as unknown as { mapNode: { count: () => Promise<number>; create: (a: unknown) => Promise<{ id: string }> } };
+      const count = await anyClient.mapNode.count();
+      if (count > 0) return;
+      const { SEED_MAP_NODES } = await import('./lib/plant-map');
+      const ids = new Map<string, string>();
+      for (const n of SEED_MAP_NODES) {
+        const row = await anyClient.mapNode.create({
+          data: {
+            kind: n.kind, code: n.code ?? null, name: n.name, desc: n.desc ?? null,
+            x: n.x, y: n.y, w: n.w, h: n.h, color: n.color,
+            parentId: n.parentKey ? ids.get(n.parentKey) ?? null : null,
+          },
+        });
+        ids.set(n.key, row.id);
+      }
+      console.log(`[bootstrap] ${SEED_MAP_NODES.length} گرهٔ نقشهٔ شماتیک (واحد/منطقه/تجهیز) مقداردهی شد.`);
+    });
   } catch (e) {
     console.error('[bootstrap] مهاجرت‌ها ناموفق (غیرمرگ‌آور):', (e as Error)?.message || e);
   }

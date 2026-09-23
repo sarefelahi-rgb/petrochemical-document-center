@@ -10,9 +10,10 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { UserPlus, FolderPlus, BookOpen, Settings2, ScrollText, Database, Copy, Cpu, RotateCcw, Ban, BrainCircuit, Trash2 } from 'lucide-react';
+import { UserPlus, FolderPlus, BookOpen, Settings2, ScrollText, Database, Copy, Cpu, RotateCcw, Ban, BrainCircuit, Trash2, Map as MapIcon } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { api, fmtJalali, ROLE_LABELS, CONF_LABELS } from './api';
+import { MapEditorTab } from './map-editor';
 
 interface AdminUser { id: string; username: string; fullName: string; role: string; clearance: string; categoryAccess: string | null; isActive: boolean; mfaEnabled: boolean; lastLoginAt: string | null; isSample: boolean; lockedUntil: string | null; projectMemberships: Array<{ projectId: string; project: { code: string; name: string } }> }
 interface Proj { id: string; code: string; name: string; isSample: boolean; areas: Array<{ id: string; code: string; name: string; units: Array<{ id: string; code: string; name: string }> }>; _count: { documents: number; memberships: number } }
@@ -29,6 +30,7 @@ export function AdminView({ orgName }: { orgName: string }) {
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="users"><UserPlus className="h-4 w-4 ml-1" /> کاربران</TabsTrigger>
           <TabsTrigger value="structure"><FolderPlus className="h-4 w-4 ml-1" /> پروژه‌ها</TabsTrigger>
+          <TabsTrigger value="map"><MapIcon className="h-4 w-4 ml-1" /> نقشهٔ مجتمع</TabsTrigger>
           <TabsTrigger value="vocab"><BookOpen className="h-4 w-4 ml-1" /> واژگان</TabsTrigger>
           <TabsTrigger value="settings"><Settings2 className="h-4 w-4 ml-1" /> تنظیمات</TabsTrigger>
           <TabsTrigger value="audit"><ScrollText className="h-4 w-4 ml-1" /> حسابرسی</TabsTrigger>
@@ -38,6 +40,7 @@ export function AdminView({ orgName }: { orgName: string }) {
         </TabsList>
         <TabsContent value="users"><UsersTab /></TabsContent>
         <TabsContent value="structure"><StructureTab /></TabsContent>
+        <TabsContent value="map"><MapEditorTab /></TabsContent>
         <TabsContent value="vocab"><VocabTab /></TabsContent>
         <TabsContent value="settings"><SettingsTab orgName={orgName} /></TabsContent>
         <TabsContent value="audit"><AuditTab /></TabsContent>

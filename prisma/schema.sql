@@ -669,3 +669,26 @@ CREATE UNIQUE INDEX "AssistantFeedback_messageId_userId_key" ON "AssistantFeedba
 -- CreateIndex
 CREATE INDEX "LearnedKnowledge_organizationId_active_idx" ON "LearnedKnowledge"("organizationId", "active");
 
+
+-- ---------- نقشهٔ شماتیک مجتمع — گره‌های قابل مدیریت توسط ادمین ----------
+CREATE TABLE "MapNode" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "parentId" TEXT,
+    "kind" TEXT NOT NULL,
+    "code" TEXT,
+    "name" TEXT NOT NULL,
+    "desc" TEXT,
+    "x" REAL NOT NULL DEFAULT 60,
+    "y" REAL NOT NULL DEFAULT 70,
+    "w" REAL NOT NULL DEFAULT 240,
+    "h" REAL NOT NULL DEFAULT 110,
+    "color" TEXT NOT NULL DEFAULT 'primary',
+    "visible" BOOLEAN NOT NULL DEFAULT true,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "MapNode_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "MapNode" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateIndex
+CREATE INDEX "MapNode_parentId_idx" ON "MapNode"("parentId");

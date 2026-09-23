@@ -647,3 +647,28 @@ model LearnedKnowledge {
   updatedAt      DateTime @updatedAt
   @@index([organizationId, active])
 }
+
+// ---------- نقشهٔ شماتیک مجتمع — کاملاً قابل مدیریت توسط ادمین ----------
+// درخت واحد → منطقه → تجهیز؛ مختصات/اندازه/رنگ/نمایش هر بلوک در همین جدول است
+// تا ادمین از پنل مدیریت بتواند بلوک‌ها را جابجا کند، اضافه/ویرایش/حذف کند
+// و نمایش یا عدم‌نمایش هر گره را کنترل کند (ویرایشگر تب «نقشهٔ مجتمع»).
+model MapNode {
+  id        String    @id @default(cuid())
+  parentId  String?
+  parent    MapNode?  @relation("MapNodeTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  MapNode[] @relation("MapNodeTree")
+  kind      String    // UNIT | AREA | EQUIPMENT
+  code      String?   // کد کوتاه روی نقشه (مثل OLF) یا تگ تجهیز (مثل H-101A) — کلید پیوند اسناد
+  name      String
+  desc      String?
+  x         Float     @default(60)
+  y         Float     @default(70)
+  w         Float     @default(240)
+  h         Float     @default(110)
+  color     String    @default("primary") // primary | sky | cyan | emerald | amber | violet | rose
+  visible   Boolean   @default(true) // عدم‌نمایش: گره برای کاربران عادی پنهان می‌شود (ادمین می‌بیند)
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  @@index([parentId])
+}

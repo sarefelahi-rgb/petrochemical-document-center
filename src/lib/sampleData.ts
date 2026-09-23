@@ -5,7 +5,7 @@ import { hashPassword, randomToken } from '@/lib/auth';
 import { storeOriginal, ensureDirs } from '@/lib/storage';
 import { normalizeCode, buildSearchNorm } from '@/lib/normalize';
 import { enqueuePipelineForFile } from '@/lib/jobs';
-import { PLANT_UNITS } from '@/lib/plant-map';
+import { SEED_MAP_NODES } from '@/lib/plant-map';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -260,8 +260,25 @@ export async function seedPlantMapSampleData(orgId: string) {
     return doc;
   };
 
+  // فهرست تجهیزات هر واحد از ساختار بذر نقشه (واحد → منطقه → تجهیز)
+  const parentOf = new Map(SEED_MAP_NODES.map((n) => [n.key, n.parentKey || null] as const));
+  const inUnit = (key: string, unitKey: string): boolean => {
+    let k: string | null | undefined = key;
+    while (k) { if (k === unitKey) return true; k = parentOf.get(k); }
+    return false;
+  };
+  const unitNameOf = (n: (typeof SEED_MAP_NODES)[number]): string => {
+    let k: string | null | undefined = n.parentKey;
+    while (k) {
+      const p = SEED_MAP_NODES.find((s) => s.key === k);
+      if (p?.kind === 'UNIT') return p.name;
+      k = p?.parentKey;
+    }
+    return '';
+  };
+
   let linkedTags = 0;
-  for (const u of PLANT_UNITS) {
+  for (const u of SEED_MAP_NODES.filter((n) => n.kind === 'UNIT')) {
     const pid = await ensureDoc({
       docNumber: `MAP-${u.code}-PID-0001`,
       title: `P&ID ${u.name} — نمونهٔ نقشهٔ تعاملی`,
@@ -275,21 +292,19 @@ export async function seedPlantMapSampleData(orgId: string) {
       tagLine: `UNIT: ${u.code} - EQUIPMENT DATASHEET SAMPLE`,
     });
 
-    for (const a of u.areas) {
-      for (const eq of a.equipment) {
-        const tag = await db.assetTag.upsert({
-          where: { tag: normalizeCode(eq.tag) },
-          update: { isSample: true, description: `${eq.name} — ${u.name}` },
-          create: { tag: normalizeCode(eq.tag), description: `${eq.name} — ${u.name}`, tagType: 'EQUIPMENT', isSample: true },
-        });
-        for (const doc of [pid, ds]) {
-          const exists = await db.docLink.findFirst({ where: { documentId: doc.id, tagId: tag.id } });
-          if (!exists) {
-            await db.docLink.create({ data: { documentId: doc.id, linkType: 'TAG', tagId: tag.id, linkStatus: 'CONFIRMED', isSample: true } });
-          }
+    for (const eq of SEED_MAP_NODES.filter((n) => n.kind === 'EQUIPMENT' && inUnit(n.key, u.key))) {
+      const tag = await db.assetTag.upsert({
+        where: { tag: normalizeCode(eq.code || eq.name) },
+        update: { isSample: true, description: `${eq.name} — ${unitNameOf(eq)}` },
+        create: { tag: normalizeCode(eq.code || eq.name), description: `${eq.name} — ${unitNameOf(eq)}`, tagType: 'EQUIPMENT', isSample: true },
+      });
+      for (const doc of [pid, ds]) {
+        const exists = await db.docLink.findFirst({ where: { documentId: doc.id, tagId: tag.id } });
+        if (!exists) {
+          await db.docLink.create({ data: { documentId: doc.id, linkType: 'TAG', tagId: tag.id, linkStatus: 'CONFIRMED', isSample: true } });
         }
-        linkedTags++;
       }
+      linkedTags++;
     }
   }
 
