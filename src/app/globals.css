@@ -289,8 +289,12 @@
   border: 1px solid var(--border);
   box-shadow: 0 10px 36px oklch(0.35 0.04 230 / 0.09);
 }
-/* درخشش لبهٔ بالای پنل شیشه‌ای (نور محیطی) */
-.glass-sheen { position: relative; overflow: hidden; }
+/* درخشش لبهٔ بالای پنل شیشه‌ای (نور محیطی)
+   ⚠ این کلاس بیرون از @layer است؛ اگر overflow اینجا تعریف شود بر
+   overflow-y-auto/overflow-x-auto و md:overflow-visible تایلند غلبه می‌کند
+   و اسکرول فهرست پیام‌ها/منو می‌شکند. برش (clip) را عناصر خودشان با
+   کلاس صریح overflow-hidden انجام می‌دهند. */
+.glass-sheen { position: relative; }
 .glass-sheen::before {
   content: '';
   position: absolute;

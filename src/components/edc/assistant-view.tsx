@@ -244,7 +244,7 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
           />
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-0.5" role="list" aria-label="سوابق گفت‌وگو">
+      <div className="flex-1 overflow-y-auto thin-scroll px-2 pb-3 space-y-0.5" role="list" aria-label="سوابق گفت‌وگو">
         {convs.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-6 px-3 leading-5">
             هنوز گفت‌وگویی ذخیره نشده است. اولین پرسش را بپرسید.
@@ -328,7 +328,7 @@ export function AssistantView({ go, initialDocId }: { go: (view: string, param?:
         </div>
 
         {/* پیام‌ها */}
-        <div className="flex-1 overflow-y-auto rounded-2xl glass glass-sheen px-3 sm:px-6 py-5 space-y-5" data-testid="assistant-messages">
+        <div className="flex-1 overflow-y-auto overscroll-contain thin-scroll rounded-2xl glass glass-sheen px-3 sm:px-6 py-5 space-y-5" data-testid="assistant-messages">
           {turns.length === 0 && !busy && (
             <div className="max-w-xl mx-auto text-center space-y-4 pt-8">
               <div className="mx-auto w-12 h-12 rounded-full bg-teal-700/10 flex items-center justify-center">
