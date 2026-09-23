@@ -1,0 +1,51 @@
+{
+  "success": true,
+  "query": "پتروشیمی بندر امام خمینی ماهشهر نمای هوایی",
+  "count": 6,
+  "ranked": true,
+  "captioned_count": 6,
+  "results": [
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/585ad657a4ec.jpg",
+      "caption": "Satellite before/after comparison of Iran's Bandar-e Mahshahr oil zone; Persian text, dates \"۲۰۲۳\", \"۲۰۲۱\"; Iran International watermark.",
+      "source": "صاحب‌خبر",
+      "original_width": "1280px",
+      "original_height": "1261px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/a98ecef30243.jpg",
+      "caption": "A collage of six images showing an industrial refinery fire with massive black smoke and flames.",
+      "source": "تابناک",
+      "original_width": "2487px",
+      "original_height": "1257px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/71dedf01731d.svg",
+      "caption": "Gemini分析异常",
+      "source": "شرکت هنزا ناو دریا",
+      "original_width": "2363px",
+      "original_height": "988px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/a87ae6df3c44.jpg",
+      "caption": "Dark surveillance footage of a monitoring room; circled man sits at desk using phone; low-quality CCTV image.",
+      "source": "خبرآنلاین",
+      "original_width": "1280px",
+      "original_height": "720px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/8e3b45e22cab.jpg",
+      "caption": "A gray-haired bearded man in a blue suit being interviewed with a microphone outdoors, Persian sign on building behind.",
+      "source": "خوزنیوز",
+      "original_width": "924px",
+      "original_height": "1074px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/675b3c839257.jpg",
+      "caption": "Aerial view of coastal residential area with red-roofed houses, palm trees, beach. Contains watermarks, logos, and Persian text (NAFTONLINE.IR).",
+      "source": "نفت آنلاین",
+      "original_width": "1280px",
+      "original_height": "1280px"
+    }
+  ]
+}

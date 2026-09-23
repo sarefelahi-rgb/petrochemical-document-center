@@ -23,7 +23,8 @@ export interface MapUnit {
   name: string;   // نام کامل واحد
   desc: string;
   family: UnitFamily;
-  x: number; y: number; w: number; h: number; // موقعیت بلوک در viewBox
+  x: number; y: number; w: number; h: number; // موقعیت بلوک در نمای شماتیک (viewBox)
+  sat?: { x: number; y: number; w: number; h: number }; // موقعیت تقریبی روی تصویر ماهواره‌ای واقعی (درصد)
   areas: MapArea[];
 }
 
@@ -41,6 +42,7 @@ export const PLANT_UNITS: MapUnit[] = [
     id: 'olf', code: 'OLF', name: 'واحد الفین (اتیلن و پروپیلن)', family: 'olefin',
     desc: 'قلب مجتمع — کرکینگ نفتا و تولید اتیلن/پروپیلن',
     x: 45, y: 50, w: 280, h: 115,
+    sat: { x: 21.5, y: 8, w: 17, h: 30 },
     areas: [
       { id: 'olf-fur', name: 'کوره‌های کرکینگ', desc: 'پیرولیز نفتا در دمای بالا', equipment: [
         { tag: 'H-101A', name: 'کوره کرکینگ «الف»', kind: 'کوره' },
@@ -63,6 +65,7 @@ export const PLANT_UNITS: MapUnit[] = [
     id: 'ldpe', code: 'LDPE', name: 'واحد پلی‌اتیلن سبک', family: 'olefin',
     desc: 'پلیمریزاسیون اتیلن فشاربالا (اتوکلاو)',
     x: 350, y: 50, w: 170, h: 115,
+    sat: { x: 39, y: 6, w: 13.5, h: 20 },
     areas: [
       { id: 'ldpe-comp', name: 'فشردن تغذیه', equipment: [
         { tag: 'C-1101', name: 'کمپرسور ثانویه اتیلن', kind: 'کمپرسور' },
@@ -82,6 +85,7 @@ export const PLANT_UNITS: MapUnit[] = [
     id: 'hdpe', code: 'HDPE', name: 'واحد پلی‌اتیلن سنگین', family: 'olefin',
     desc: 'پلیمریزاسیون با کاتالیزور زیگلر-ناتا (راکتور لوپ)',
     x: 540, y: 50, w: 170, h: 115,
+    sat: { x: 39, y: 27.5, w: 13.5, h: 19 },
     areas: [
       { id: 'hdpe-loop', name: 'راکتور لوپ', equipment: [
         { tag: 'R-2101', name: 'راکتور لوپ', kind: 'راکتور' },
@@ -101,6 +105,7 @@ export const PLANT_UNITS: MapUnit[] = [
     id: 'pp', code: 'PP', name: 'واحد پلی‌پروپیلن', family: 'olefin',
     desc: 'پلیمریزاسیون پروپیلن در راکتور حلقه‌ای',
     x: 730, y: 50, w: 170, h: 115,
+    sat: { x: 53.5, y: 6.5, w: 9, h: 23.5 },
     areas: [
       { id: 'pp-loop', name: 'راکتور حلقه', equipment: [
         { tag: 'R-3101', name: 'راکتور حلقه‌ای', kind: 'راکتور' },
@@ -120,6 +125,7 @@ export const PLANT_UNITS: MapUnit[] = [
     id: 'eoeg', code: 'EO/EG', name: 'واحد اتیلن اکساید و گلیکول', family: 'olefin',
     desc: 'اکسیداسیون اتیلن و تولید مونو/دی‌اتیلن گلیکول',
     x: 45, y: 205, w: 200, h: 115,
+    sat: { x: 8, y: 38, w: 13.5, h: 21 },
     areas: [
       { id: 'eoeg-ox', name: 'اکسیداسیون', equipment: [
         { tag: 'R-4101', name: 'راکتور اکسیداسیون اتیلن', kind: 'راکتور' },
@@ -139,6 +145,7 @@ export const PLANT_UNITS: MapUnit[] = [
     id: 'aro', code: 'ARO', name: 'واحد آرامات‌ها', family: 'aromatic',
     desc: 'ریفرمینگ کاتالیستی و تولید بنزین/تولوئن/زایلن',
     x: 270, y: 205, w: 190, h: 115,
+    sat: { x: 22.5, y: 40.5, w: 16, h: 18.5 },
     areas: [
       { id: 'aro-ref', name: 'ریفرمینگ کاتالیستی', equipment: [
         { tag: 'H-5101', name: 'کوره ریفرمینگ', kind: 'کوره' },
@@ -158,6 +165,7 @@ export const PLANT_UNITS: MapUnit[] = [
     id: 'px', code: 'PX', name: 'واحد پارازایلین', family: 'aromatic',
     desc: 'جداسازی پارازایلین با جذب و بلورسازی',
     x: 485, y: 205, w: 190, h: 115,
+    sat: { x: 53.5, y: 31, w: 9, h: 17.5 },
     areas: [
       { id: 'px-abs', name: 'جذب و جداسازی', equipment: [
         { tag: 'E-6101', name: 'مبدل واحد جذب', kind: 'مبدل حرارتی' },
@@ -177,6 +185,7 @@ export const PLANT_UNITS: MapUnit[] = [
     id: 'ut', code: 'UT', name: 'یوتیلیتی و سرویس‌های جانبی', family: 'utility',
     desc: 'بخار، برق، آب خنک‌کن، هوای ابزار و نیتروژن',
     x: 45, y: 360, w: 280, h: 120,
+    sat: { x: 8, y: 9.5, w: 13.5, h: 27 },
     areas: [
       { id: 'ut-steam', name: 'تولید بخار و برق', equipment: [
         { tag: 'B-7001', name: 'دیگ بخار شمارهٔ ۱', kind: 'دیگ بخار' },
@@ -197,6 +206,7 @@ export const PLANT_UNITS: MapUnit[] = [
     id: 'tk', code: 'TK', name: 'مخازن و تاسیسات صادراتی', family: 'tank',
     desc: 'انبارش فرآورده‌ها و بارگیری دریایی از اسکله‌ها',
     x: 350, y: 360, w: 550, h: 120,
+    sat: { x: 62.5, y: 25, w: 24, h: 35 },
     areas: [
       { id: 'tk-store', name: 'مخازن فرآورده', equipment: [
         { tag: 'TK-8001', name: 'مخزن سقف شناور نفتا', kind: 'مخزن ذخیره' },

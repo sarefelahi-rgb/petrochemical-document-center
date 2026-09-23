@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   MapPin, Layers, Factory, ArrowLeft, FileText, ExternalLink,
-  Flame, Waves, Compass, Boxes, Wrench, ChevronLeft, CircleAlert,
+  Flame, Waves, Compass, Boxes, Wrench, ChevronLeft, CircleAlert, Satellite, Map as MapIcon,
 } from 'lucide-react';
 import { api } from './api';
 import { toPersianDigits as toFa } from '@/lib/normalize';
@@ -61,6 +61,7 @@ export function PlantMapView({ go }: { go: (view: string, param?: string) => voi
   const [dossierLoading, setDossierLoading] = useState(false);
   const [dossier, setDossier] = useState<DossierResp | null>(null);
   const [dossierError, setDossierError] = useState('');
+  const [siteMode, setSiteMode] = useState<'sat' | 'schematic'>('sat');
 
   const openUnit = (u: MapUnit) => { setSelUnit(u); setSelArea(null); };
   const backToSite = () => { setSelUnit(null); setSelArea(null); };
@@ -179,6 +180,46 @@ export function PlantMapView({ go }: { go: (view: string, param?: string) => voi
       </div>
 
       <div className="glass rounded-2xl p-3 sm:p-4 relative">
+        {/* نوع نمایش: تصویر ماهواره‌ای واقعی یا شماتیک */}
+        <div className="flex items-center gap-1.5 px-1 pb-3" role="tablist" aria-label="نوع نمایش نقشه">
+          <Button size="sm" variant={siteMode === 'sat' ? 'default' : 'outline'} onClick={() => setSiteMode('sat')} aria-pressed={siteMode === 'sat'}>
+            <Satellite className="h-4 w-4" /> نمای ماهواره‌ای (واقعی)
+          </Button>
+          <Button size="sm" variant={siteMode === 'schematic' ? 'default' : 'outline'} onClick={() => setSiteMode('schematic')} aria-pressed={siteMode === 'schematic'}>
+            <MapIcon className="h-4 w-4" /> نمای شماتیک
+          </Button>
+        </div>
+
+        {siteMode === 'sat' && (
+          <div data-testid="plant-map-sat">
+            <div className="relative">
+              <img
+                src="/plant-map/bipc-satellite.jpg"
+                alt="تصویر ماهواره‌ای واقعی منطقهٔ ویژهٔ پتروشیمی ماهشهر (بندر امام) با اسکله‌های صادراتی"
+                className="w-full h-auto rounded-xl select-none"
+                draggable={false}
+              />
+              {PLANT_UNITS.map((u) => u.sat && (
+                <button
+                  key={u.id}
+                  onClick={() => openUnit(u)}
+                  aria-label={`${u.name} — نمایش مناطق`}
+                  title={`${u.name} — ${FAMILY_LABELS[u.family]}`}
+                  className="group absolute rounded-lg border-2 border-white/80 bg-white/10 hover:bg-primary/30 hover:border-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  style={{ left: `${u.sat.x}%`, top: `${u.sat.y}%`, width: `${u.sat.w}%`, height: `${u.sat.h}%` }}
+                >
+                  <span className="code-ltr absolute inset-x-0 top-1 mx-auto w-max rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-bold text-white group-hover:bg-primary transition-colors">{u.code}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-5 px-2 pt-2">
+              تصویر ماهواره‌ای واقعی منطقهٔ ویژهٔ پتروشیمی ماهشهر — بندر امام (۲۰۲۳) شامل اسکله‌های صادراتی و مخازن؛
+              محدودهٔ بلوک‌ها برای ناوبری اسناد تقریبی است. برای چیدمان واضح و دقیق، «نمای شماتیک» را ببینید.
+            </p>
+          </div>
+        )}
+
+        {siteMode === 'schematic' && (
         <svg viewBox="0 0 1000 495" className="w-full h-auto rounded-xl" role="group" aria-label={`نقشهٔ سایت ${PLANT_NAME}`}>
           {/* محوطهٔ سایت */}
           <rect x="20" y="20" width="960" height="470" rx="18" className="fill-muted stroke-border" strokeWidth="2" />
@@ -227,15 +268,7 @@ export function PlantMapView({ go }: { go: (view: string, param?: string) => voi
             );
           })}
         </svg>
-
-        <svg viewBox="0 0 1000 135" className="w-full h-auto -mt-1" aria-hidden>
-          <path d="M 20 40 C 200 25, 320 55, 500 40 S 850 25, 980 42 L 980 130 L 20 130 Z" className="fill-sky-400/25 dark:fill-sky-700/40" />
-          <rect x="500" y="5" width="14" height="100" rx="4" className="fill-violet-400/50 stroke-violet-600/60" strokeWidth="1.5" />
-          <rect x="615" y="5" width="14" height="100" rx="4" className="fill-violet-400/50 stroke-violet-600/60" strokeWidth="1.5" />
-          <rect x="730" y="5" width="14" height="100" rx="4" className="fill-violet-400/50 stroke-violet-600/60" strokeWidth="1.5" />
-          <text x="250" y="85" fontSize="15" fontWeight="600" className="fill-sky-700 dark:fill-sky-300">خلیج فارس</text>
-          <text x="672" y="122" fontSize="12" textAnchor="middle" className="fill-muted-foreground">اسکله‌های صادراتی</text>
-        </svg>
+        )}
 
         {/* راهنما */}
         <div className="flex flex-wrap items-center gap-2 px-2 pb-1">
